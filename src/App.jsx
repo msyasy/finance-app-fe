@@ -8,8 +8,11 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Footer from "./components/Footer";
+import { useAutoLogout } from "./hooks/useAutoLogout"; // Import custom hook
 
 export default function App() {
+  useAutoLogout(); // Panggil hook auto logout di sini
+
   return (
     <Router>
       <div className="min-h-screen flex flex-col bg-gray-50">
