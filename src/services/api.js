@@ -1,10 +1,14 @@
 import axios from "axios";
 
+// Pastikan menggunakan HTTPS, bukan HTTP
+const baseURL =
+  import.meta.env.VITE_API_URL ||
+  "https://finance-app-be-production.up.railway.app";
+
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080/api",
+  baseURL: `${baseURL}/api`,
 });
 
-// Otomatis menempelkan Token JWT di setiap request jika user sudah login
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
