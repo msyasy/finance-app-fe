@@ -59,6 +59,15 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            {/* LINK LUPA PASSWORD */}
+            <div className="flex justify-end mt-1">
+              <Link
+                to="/forgot-password"
+                className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium"
+              >
+                Lupa Password?
+              </Link>
+            </div>
           </div>
           <button
             type="submit"

@@ -41,4 +41,10 @@ API.interceptors.response.use(
   }
 );
 
+// --- AUTH SERVICES ---
+export const loginUser = (data) => API.post('/login', data);
+export const registerUser = (data) => API.post('/register', data);
+export const forgotPassword = (data) => API.post('/forgot-password', data);
+export const resetPassword = (data) => API.post('/reset-password', data);
+
 export default API;
