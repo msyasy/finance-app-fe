@@ -1,8 +1,11 @@
 import axios from 'axios';
 
+// Di lokal (npm run dev) akan membaca localhost:8080.
+// Di Vercel akan otomatis menggunakan nilai VITE_API_URL.
+const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
 const API = axios.create({
-  // WAJIB HTTPS (pakai s)
-  baseURL: 'https://finance-app-be-production.up.railway.app/api',
+  baseURL: `${baseURL}/api`,
 });
 
 API.interceptors.request.use((config) => {
