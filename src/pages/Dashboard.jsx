@@ -186,13 +186,23 @@ export default function Dashboard() {
   // Filter list kategori sesuai dengan tipe transaksi yang terpilih saat ini
   const filteredCategories = categories.filter((c) => c.type === type);
 
-  // --- LOGIKA RINGKASAN KEUANGAN ---
+  // --- LOGIKA HELPER & RINGKASAN KEUANGAN ---
   const formatRupiah = (num) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
       maximumFractionDigits: 0,
     }).format(num || 0);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(date);
   };
 
   // 1. Total Saldo Semua Dompet
@@ -491,15 +501,30 @@ export default function Dashboard() {
             ) : (
               transactions.map((t) => {
                 const isIncome = t.type === "income";
+
+                // Cari nama dompet & kategori
+                const walletName =
+                  t.wallet?.name ||
+                  wallets.find((w) => w.id === t.wallet_id)?.name ||
+                  "Dompet";
+                const categoryName =
+                  t.category?.name ||
+                  categories.find((c) => c.id === t.category_id)?.name;
+
                 return (
                   <div
                     key={t.id}
                     className="py-3 flex justify-between items-center"
                   >
                     <div>
-                      <p className="font-semibold text-gray-800">{t.notes}</p>
-                      <p className="text-xs text-gray-400">
-                        {new Date(t.created_at).toLocaleDateString("id-ID")}
+                      <p className="font-semibold text-gray-800">
+                        {t.notes} {categoryName ? `• ${categoryName}` : ""}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {formatDate(t.created_at || t.date)} •{" "}
+                        <span className="font-medium text-gray-500">
+                          {walletName}
+                        </span>
                       </p>
                     </div>
                     <div className="flex items-center gap-4">
