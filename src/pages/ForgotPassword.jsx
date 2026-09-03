@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { forgotPassword } from '../services/api';
+import API from '../services/api';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -15,7 +15,7 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const res = await forgotPassword({ email });
+      const res = await API.post('/forgot-password', { email });
       setMessage(res.data.message);
       setEmail('');
     } catch (err) {
