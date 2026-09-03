@@ -12,6 +12,7 @@ const API = axios.create({
   baseURL: `${baseURL}/api`,
 });
 
+// Request Interceptor: Menempelkan token ke setiap request
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -19,5 +20,25 @@ API.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Response Interceptor: Auto Logout jika Token Expired / Invalid (Error 401)
+API.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Hapus data autentikasi dari browser
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+
+      // Tendang ke halaman login jika tidak sedang di halaman login
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default API;
