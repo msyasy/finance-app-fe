@@ -128,6 +128,13 @@ export default function Dashboard() {
     }
   };
 
+  // Helper format input angka otomatis dengan titik ribuan
+  const formatAmountInput = (value) => {
+    const rawValue = value.replace(/\D/g, ""); // Ambil angka saja
+    if (!rawValue) return "";
+    return new Intl.NumberFormat("id-ID").format(rawValue);
+  };
+
   const handleAddTransaction = async (e) => {
     e.preventDefault();
     setError("");
@@ -142,12 +149,20 @@ export default function Dashboard() {
       return;
     }
 
+    // Bersihkan karakter titik sebelum diubah ke float
+    const cleanAmount = parseFloat(amount.replace(/\./g, ""));
+
+    if (isNaN(cleanAmount) || cleanAmount <= 0) {
+      setError("Masukkan nominal yang valid");
+      return;
+    }
+
     try {
       await API.post("/transactions", {
         wallet_id: parseInt(walletId),
         category_id: parseInt(categoryId),
         type: type,
-        amount: parseFloat(amount),
+        amount: cleanAmount,
         notes: notes,
       });
       setAmount("");
@@ -435,12 +450,13 @@ export default function Dashboard() {
               )}
             </select>
 
+            {/* Input Nominal Text dengan Format Titik Ribuan */}
             <input
-              type="number"
+              type="text"
               placeholder="Jumlah (Rp)"
               required
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => setAmount(formatAmountInput(e.target.value))}
               className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
 
