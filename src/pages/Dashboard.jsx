@@ -22,6 +22,7 @@ export default function Dashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     navigate("/login");
   };
 
@@ -115,7 +116,7 @@ export default function Dashboard() {
   const handleDeleteWallet = async (id, name) => {
     if (
       !window.confirm(
-        `Yakin ingin menghapus dompet "${name}"? Semua transaksi di dalamnya juga akan terhapus.`,
+        `Yakin ingin menghapus dompet "${name}"? Semua transaksi di dalamnya juga akan terhapus.`
       )
     )
       return;
@@ -170,6 +171,43 @@ export default function Dashboard() {
   // Filter list kategori sesuai dengan tipe transaksi yang terpilih saat ini
   const filteredCategories = categories.filter((c) => c.type === type);
 
+  // --- LOGIKA RINGKASAN KEUANGAN ---
+  const formatRupiah = (num) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(num || 0);
+  };
+
+  // 1. Total Saldo Semua Dompet
+  const totalBalance = wallets.reduce(
+    (acc, wallet) => acc + parseFloat(wallet.balance || 0),
+    0
+  );
+
+  // Filter transaksi bulan ini
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+
+  const thisMonthTransactions = transactions.filter((t) => {
+    const transDate = new Date(t.created_at || Date.now());
+    return (
+      transDate.getMonth() === currentMonth &&
+      transDate.getFullYear() === currentYear
+    );
+  });
+
+  // 2. Total Pemasukan Bulan Ini
+  const totalIncome = thisMonthTransactions
+    .filter((t) => t.type === "income")
+    .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
+
+  // 3. Total Pengeluaran Bulan Ini
+  const totalExpense = thisMonthTransactions
+    .filter((t) => t.type === "expense")
+    .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -189,6 +227,60 @@ export default function Dashboard() {
           >
             Logout
           </button>
+        </div>
+
+        {/* Section Ringkasan Keuangan (3 Card) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Total Saldo */}
+          <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Total Saldo Utama
+              </p>
+              <h3 className="text-xl font-bold text-gray-900 mt-1">
+                {formatRupiah(totalBalance)}
+              </h3>
+            </div>
+            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Pemasukan */}
+          <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Pemasukan (Bulan Ini)
+              </p>
+              <h3 className="text-xl font-bold text-green-600 mt-1">
+                + {formatRupiah(totalIncome)}
+              </h3>
+            </div>
+            <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Pengeluaran */}
+          <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Pengeluaran (Bulan Ini)
+              </p>
+              <h3 className="text-xl font-bold text-red-600 mt-1">
+                - {formatRupiah(totalExpense)}
+              </h3>
+            </div>
+            <div className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+              </svg>
+            </div>
+          </div>
         </div>
 
         {/* Section Dompet & Kategori */}
