@@ -17,6 +17,11 @@ export default function Dashboard() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState("expense");
 
+  // State Filter & Search Transaksi
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedWalletFilter, setSelectedWalletFilter] = useState("all");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
+
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -116,7 +121,7 @@ export default function Dashboard() {
   const handleDeleteWallet = async (id, name) => {
     if (
       !window.confirm(
-        `Yakin ingin menghapus dompet "${name}"? Semua transaksi di dalamnya juga akan terhapus.`
+        `Yakin ingin menghapus dompet "${name}"? Semua transaksi di dalamnya juga akan terhapus.`,
       )
     )
       return;
@@ -208,7 +213,7 @@ export default function Dashboard() {
   // 1. Total Saldo Semua Dompet
   const totalBalance = wallets.reduce(
     (acc, wallet) => acc + parseFloat(wallet.balance || 0),
-    0
+    0,
   );
 
   // Filter transaksi bulan ini
@@ -232,6 +237,32 @@ export default function Dashboard() {
   const totalExpense = thisMonthTransactions
     .filter((t) => t.type === "expense")
     .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
+
+  // --- LOGIKA FILTERING & SEARCH TRANSAKSI ---
+  const filteredTransactions = transactions.filter((t) => {
+    const categoryName =
+      t.category?.name ||
+      categories.find((c) => c.id === t.category_id)?.name ||
+      "";
+    const searchLower = searchQuery.toLowerCase();
+
+    // 1. Filter Pencarian Catatan / Kategori
+    const matchesSearch =
+      (t.notes && t.notes.toLowerCase().includes(searchLower)) ||
+      categoryName.toLowerCase().includes(searchLower);
+
+    // 2. Filter Berdasarkan Dompet
+    const matchesWallet =
+      selectedWalletFilter === "all" ||
+      t.wallet_id === Number(selectedWalletFilter);
+
+    // 3. Filter Berdasarkan Kategori
+    const matchesCategory =
+      selectedCategoryFilter === "all" ||
+      t.category_id === Number(selectedCategoryFilter);
+
+    return matchesSearch && matchesWallet && matchesCategory;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -267,8 +298,19 @@ export default function Dashboard() {
               </h3>
             </div>
             <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
               </svg>
             </div>
           </div>
@@ -284,8 +326,19 @@ export default function Dashboard() {
               </h3>
             </div>
             <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 11l5-5m0 0l5 5m-5-5v12"
+                />
               </svg>
             </div>
           </div>
@@ -301,8 +354,19 @@ export default function Dashboard() {
               </h3>
             </div>
             <div className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 13l-5 5m0 0l-5-5m5 5V6"
+                />
               </svg>
             </div>
           </div>
@@ -493,13 +557,53 @@ export default function Dashboard() {
           <h3 className="text-lg font-bold text-gray-800 mb-4">
             Riwayat Transaksi
           </h3>
+
+          {/* Controls Search & Filter */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+            <input
+              type="text"
+              placeholder="Cari transaksi / catatan..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+
+            <select
+              value={selectedWalletFilter}
+              onChange={(e) => setSelectedWalletFilter(e.target.value)}
+              className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+            >
+              <option value="all">Semua Dompet</option>
+              {wallets.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={selectedCategoryFilter}
+              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+              className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+            >
+              <option value="all">Semua Kategori</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.type === "income" ? "Pemasukan" : "Pengeluaran"})
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="divide-y divide-gray-100">
-            {transactions.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">
-                Belum ada transaksi.
+            {filteredTransactions.length === 0 ? (
+              <p className="text-gray-500 text-center py-4 text-sm">
+                {transactions.length === 0
+                  ? "Belum ada transaksi."
+                  : "Tidak ada transaksi yang cocok dengan pencarian/filter."}
               </p>
             ) : (
-              transactions.map((t) => {
+              filteredTransactions.map((t) => {
                 const isIncome = t.type === "income";
 
                 // Cari nama dompet & kategori
