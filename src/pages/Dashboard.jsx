@@ -12,15 +12,18 @@ export default function Dashboard() {
   const [categoryId, setCategoryId] = useState("");
   const [walletId, setWalletId] = useState("");
   const [newWalletName, setNewWalletName] = useState("");
-
-  // State Kategori Baru
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState("expense");
-
-  // State Filter & Search Transaksi
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedWalletFilter, setSelectedWalletFilter] = useState("all");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [paginationMeta, setPaginationMeta] = useState({
+    currentPage: 1,
+    limit: 10,
+    totalItems: 0,
+    totalPages: 1,
+  });
 
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -32,7 +35,6 @@ export default function Dashboard() {
   };
 
   const fetchData = async () => {
-    // 1. Fetch Wallets
     try {
       const walletRes = await API.get("/wallets");
       const fetchedWallets = walletRes.data.data || [];
@@ -50,16 +52,20 @@ export default function Dashboard() {
       }
       setWallets([]);
     }
-
-    // 2. Fetch Transactions
     try {
-      const txRes = await API.get("/transactions");
+      const txRes = await API.get(`/transactions?page=${page}&limit=10`);
       setTransactions(txRes.data.data || []);
+      if (txRes.data.pagination) {
+        setPaginationMeta({
+          currentPage: txRes.data.pagination.current_page || 1,
+          limit: txRes.data.pagination.limit || 10,
+          totalItems: txRes.data.pagination.total_items || 0,
+          totalPages: txRes.data.pagination.total_pages || 1,
+        });
+      }
     } catch {
       setTransactions([]);
     }
-
-    // 3. Fetch Categories
     try {
       const catRes = await API.get("/categories");
       const fetchedCategories = catRes.data.data || [];
@@ -74,9 +80,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [page]);
 
-  // Update categoryId pilihan otomatis saat tipe transaksi diubah
   const handleTypeChange = (newType) => {
     setType(newType);
     const availableCats = categories.filter((c) => c.type === newType);
@@ -87,7 +92,6 @@ export default function Dashboard() {
     }
   };
 
-  // Handler Tambah Kategori
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     setError("");
@@ -133,9 +137,8 @@ export default function Dashboard() {
     }
   };
 
-  // Helper format input angka otomatis dengan titik ribuan
   const formatAmountInput = (value) => {
-    const rawValue = value.replace(/\D/g, ""); // Ambil angka saja
+    const rawValue = value.replace(/\D/g, "");
     if (!rawValue) return "";
     return new Intl.NumberFormat("id-ID").format(rawValue);
   };
@@ -154,7 +157,6 @@ export default function Dashboard() {
       return;
     }
 
-    // Bersihkan karakter titik sebelum diubah ke float
     const cleanAmount = parseFloat(amount.replace(/\./g, ""));
 
     if (isNaN(cleanAmount) || cleanAmount <= 0) {
@@ -188,10 +190,8 @@ export default function Dashboard() {
     }
   };
 
-  // Filter list kategori sesuai dengan tipe transaksi yang terpilih saat ini
   const filteredCategories = categories.filter((c) => c.type === type);
 
-  // --- LOGIKA HELPER & RINGKASAN KEUANGAN ---
   const formatRupiah = (num) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -210,13 +210,11 @@ export default function Dashboard() {
     }).format(date);
   };
 
-  // 1. Total Saldo Semua Dompet
   const totalBalance = wallets.reduce(
     (acc, wallet) => acc + parseFloat(wallet.balance || 0),
     0,
   );
 
-  // Filter transaksi bulan ini
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
 
@@ -228,17 +226,14 @@ export default function Dashboard() {
     );
   });
 
-  // 2. Total Pemasukan Bulan Ini
   const totalIncome = thisMonthTransactions
     .filter((t) => t.type === "income")
     .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
 
-  // 3. Total Pengeluaran Bulan Ini
   const totalExpense = thisMonthTransactions
     .filter((t) => t.type === "expense")
     .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
 
-  // --- LOGIKA FILTERING & SEARCH TRANSAKSI ---
   const filteredTransactions = transactions.filter((t) => {
     const categoryName =
       t.category?.name ||
@@ -246,17 +241,14 @@ export default function Dashboard() {
       "";
     const searchLower = searchQuery.toLowerCase();
 
-    // 1. Filter Pencarian Catatan / Kategori
     const matchesSearch =
       (t.notes && t.notes.toLowerCase().includes(searchLower)) ||
       categoryName.toLowerCase().includes(searchLower);
 
-    // 2. Filter Berdasarkan Dompet
     const matchesWallet =
       selectedWalletFilter === "all" ||
       t.wallet_id === Number(selectedWalletFilter);
 
-    // 3. Filter Berdasarkan Kategori
     const matchesCategory =
       selectedCategoryFilter === "all" ||
       t.category_id === Number(selectedCategoryFilter);
@@ -652,6 +644,36 @@ export default function Dashboard() {
               })
             )}
           </div>
+
+          {/* Kontrol Navigasi Pagination */}
+          {paginationMeta.totalPages > 1 && (
+            <div className="flex justify-between items-center pt-6 mt-4 border-t border-gray-100">
+              <button
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                &larr; Sebelumnya
+              </button>
+
+              <span className="text-xs text-gray-500 font-medium">
+                Halaman {paginationMeta.currentPage} dari{" "}
+                {paginationMeta.totalPages}
+              </span>
+
+              <button
+                onClick={() =>
+                  setPage((prev) =>
+                    Math.min(prev + 1, paginationMeta.totalPages),
+                  )
+                }
+                disabled={page >= paginationMeta.totalPages}
+                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                Selanjutnya &rarr;
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
