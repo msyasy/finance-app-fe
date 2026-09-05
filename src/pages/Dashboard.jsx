@@ -26,7 +26,9 @@ const CHART_COLORS = [
 ];
 
 export default function Dashboard() {
+  // ==========================================
   // 1. STATE MANAGEMENT
+  // ==========================================
   const [wallets, setWallets] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -44,6 +46,10 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedWalletFilter, setSelectedWalletFilter] = useState("all");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
+
+  // State Filter Rentang Tanggal
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -65,7 +71,9 @@ export default function Dashboard() {
 
   const navigate = useNavigate();
 
+  // ==========================================
   // 2. LIFECYCLE & DATA FETCHING
+  // ==========================================
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -92,9 +100,13 @@ export default function Dashboard() {
       setWallets([]);
     }
 
-    // Fetch Transaksi dengan Pagination
+    // Fetch Transaksi dengan Pagination & Filter Tanggal
     try {
-      const txRes = await API.get(`/transactions?page=${page}&limit=10`);
+      let url = `/transactions?page=${page}&limit=10`;
+      if (startDate && endDate) {
+        url += `&start_date=${startDate}&end_date=${endDate}`;
+      }
+      const txRes = await API.get(url);
       setTransactions(txRes.data.data || []);
       if (txRes.data.pagination) {
         setPaginationMeta({
@@ -122,9 +134,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchData();
-  }, [page]);
+  }, [page, startDate, endDate]);
 
+  // ==========================================
   // 3. EVENT HANDLERS (DOMPET, KATEGORI, TRANSAKSI)
+  // ==========================================
   const handleTypeChange = (newType) => {
     setType(newType);
     const availableCats = categories.filter((c) => c.type === newType);
@@ -240,7 +254,9 @@ export default function Dashboard() {
     });
   };
 
-  // 4. HELPER & KALKULASI RINGKASAN KEUSNGAN
+  // ==========================================
+  // 4. HELPER & KALKULASI RINGKASAN KEUANGAN
+  // ==========================================
   const filteredCategories = categories.filter((c) => c.type === type);
 
   const formatRupiah = (num) => {
@@ -324,11 +340,13 @@ export default function Dashboard() {
     return matchesSearch && matchesWallet && matchesCategory;
   });
 
+  // ==========================================
   // 5. TAMPILAN DASHBOARD (JSX)
+  // ==========================================
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* BAGIAN 5.1: HEADER DASHBOARD                                  */}
+        {/* BAGIAN 5.1: HEADER DASHBOARD */}
         <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">
@@ -346,7 +364,7 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* BAGIAN 5.2: CARD RINGKASAN SALDO & ARUS KAS                   */}
+        {/* BAGIAN 5.2: CARD RINGKASAN SALDO & ARUS KAS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Total Saldo Utama */}
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
@@ -394,7 +412,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* BAGIAN 5.3: KELOLA DOMPET & KATEGORI                          */}
+        {/* BAGIAN 5.3: KELOLA DOMPET & KATEGORI */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {/* Kelola Daftar Dompet */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
@@ -510,7 +528,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* BAGIAN 5.4: FORM CATAT TRANSAKSI BARU                        */}
+        {/* BAGIAN 5.4: FORM CATAT TRANSAKSI BARU */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold text-gray-800 mb-4">
             Catat Transaksi Baru
@@ -589,14 +607,14 @@ export default function Dashboard() {
           </form>
         </div>
 
-        {/* BAGIAN 5.5: BATAS ANGGARAN BULANAN (BUDGETING PROGRESS CARD)   */}
+        {/* BAGIAN 5.5: BATAS ANGGARAN BULANAN (BUDGETING PROGRESS CARD) */}
         <BudgetProgressCard
           categories={categories}
           transactions={transactions}
           onBudgetUpdated={fetchData}
         />
 
-        {/* BAGIAN 5.6: TABEL RIWAYAT TRANSAKSI & GRAFIK PENGELUARAN      */}
+        {/* BAGIAN 5.6: TABEL RIWAYAT TRANSAKSI & GRAFIK PENGELUARAN */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Tabel Riwayat Transaksi (2 Kolom Grid) */}
           <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
@@ -605,40 +623,74 @@ export default function Dashboard() {
             </h3>
 
             {/* Filter & Search Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <input
-                type="text"
-                placeholder="Cari transaksi..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="p-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
-              />
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input
+                  type="text"
+                  placeholder="Cari transaksi..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="p-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                />
 
-              <select
-                value={selectedWalletFilter}
-                onChange={(e) => setSelectedWalletFilter(e.target.value)}
-                className="p-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-              >
-                <option value="all">Semua Dompet</option>
-                {wallets.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))}
-              </select>
+                <select
+                  value={selectedWalletFilter}
+                  onChange={(e) => setSelectedWalletFilter(e.target.value)}
+                  className="p-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                >
+                  <option value="all">Semua Dompet</option>
+                  {wallets.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
+                  ))}
+                </select>
 
-              <select
-                value={selectedCategoryFilter}
-                onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-                className="p-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-              >
-                <option value="all">Semua Kategori</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                <select
+                  value={selectedCategoryFilter}
+                  onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                  className="p-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                >
+                  <option value="all">Semua Kategori</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter Rentang Tanggal & Tombol Reset */}
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-50 text-xs">
+                <span className="text-gray-400 font-medium">
+                  Rentang Tanggal:
+                </span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="p-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700"
+                />
+                <span className="text-gray-400">s/d</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="p-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700"
+                />
+
+                {(startDate || endDate) && (
+                  <button
+                    onClick={() => {
+                      setStartDate("");
+                      setEndDate("");
+                    }}
+                    className="text-red-500 hover:text-red-700 font-medium text-xs px-2 py-1 rounded-lg bg-red-50 transition cursor-pointer"
+                  >
+                    Reset Tanggal
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* List Transaksi */}
@@ -806,7 +858,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* BAGIAN 5.7: MODAL DIALOGS (CONFIRM & TRANSFER)                */}
+      {/* BAGIAN 5.7: MODAL DIALOGS (CONFIRM & TRANSFER) */}
       <ConfirmModal
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}
