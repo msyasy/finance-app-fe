@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
 // Format Angka ke Rupiah
@@ -37,9 +37,18 @@ const prepareData = (transactions, wallets, categories) => {
 // 1. EXPORT KE CSV
 export const exportToCSV = (transactions, wallets, categories) => {
   const data = prepareData(transactions, wallets, categories);
-  if (data.length === 0) return alert("Tidak ada data transaksi untuk diekspor");
+  if (data.length === 0)
+    return alert("Tidak ada data transaksi untuk diekspor");
 
-  const headers = ["No", "Tanggal", "Dompet", "Kategori", "Tipe", "Nominal", "Catatan"];
+  const headers = [
+    "No",
+    "Tanggal",
+    "Dompet",
+    "Kategori",
+    "Tipe",
+    "Nominal",
+    "Catatan",
+  ];
   const csvRows = [
     headers.join(","),
     ...data.map((row) =>
@@ -51,11 +60,13 @@ export const exportToCSV = (transactions, wallets, categories) => {
         `"${row.Tipe}"`,
         row.Nominal,
         `"${row.Catatan}"`,
-      ].join(",")
+      ].join(","),
     ),
   ];
 
-  const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([csvRows.join("\n")], {
+    type: "text/csv;charset=utf-8;",
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -68,7 +79,8 @@ export const exportToCSV = (transactions, wallets, categories) => {
 // 2. EXPORT KE EXCEL (.xlsx)
 export const exportToExcel = (transactions, wallets, categories) => {
   const data = prepareData(transactions, wallets, categories);
-  if (data.length === 0) return alert("Tidak ada data transaksi untuk diekspor");
+  if (data.length === 0)
+    return alert("Tidak ada data transaksi untuk diekspor");
 
   const worksheet = XLSX.utils.json_to_sheet(data);
   const workbook = XLSX.utils.book_new();
@@ -77,10 +89,11 @@ export const exportToExcel = (transactions, wallets, categories) => {
   XLSX.writeFile(workbook, `Laporan_Transaksi_${Date.now()}.xlsx`);
 };
 
-// 3. EXPORT KE PDF
+// EXPORT KE PDF
 export const exportToPDF = (transactions, wallets, categories) => {
   const rawData = prepareData(transactions, wallets, categories);
-  if (rawData.length === 0) return alert("Tidak ada data transaksi untuk diekspor");
+  if (rawData.length === 0)
+    return alert("Tidak ada data transaksi untuk diekspor");
 
   const doc = new jsPDF();
 
@@ -91,7 +104,15 @@ export const exportToPDF = (transactions, wallets, categories) => {
   doc.text(`Dicetak pada: ${new Date().toLocaleDateString("id-ID")}`, 14, 22);
 
   // Tabel Data
-  const tableColumn = ["No", "Tanggal", "Dompet", "Kategori", "Tipe", "Nominal", "Catatan"];
+  const tableColumn = [
+    "No",
+    "Tanggal",
+    "Dompet",
+    "Kategori",
+    "Tipe",
+    "Nominal",
+    "Catatan",
+  ];
   const tableRows = rawData.map((item) => [
     item.No,
     item.Tanggal,
@@ -102,7 +123,8 @@ export const exportToPDF = (transactions, wallets, categories) => {
     item.Catatan,
   ]);
 
-  doc.autoTable({
+  // autotable
+  autoTable(doc, {
     head: [tableColumn],
     body: tableRows,
     startY: 28,
