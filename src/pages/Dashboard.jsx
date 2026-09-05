@@ -29,7 +29,7 @@ const CHART_COLORS = [
 
 export default function Dashboard() {
   // ==========================================
-  // 1. STATE MANAGEMENT
+  // 1. STATE MANAGEMENT & DINAMIS TAHUN
   // ==========================================
   const [wallets, setWallets] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -53,6 +53,14 @@ export default function Dashboard() {
   // State Filter Bulan & Tahun (Default ke Bulan & Tahun Saat Ini)
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // Generasi Pilihan Tahun Dinamis (Mulai dari 2026 sampai Tahun Depan)
+  const startYear = 2026;
+  const currentYearNum = new Date().getFullYear();
+  const yearOptions = Array.from(
+    { length: Math.max(currentYearNum - startYear + 2, 1) },
+    (_, index) => startYear + index,
+  );
 
   // State Filter Rentang Tanggal Manual
   const [startDate, setStartDate] = useState("");
@@ -767,7 +775,7 @@ export default function Dashboard() {
                 </select>
               </div>
 
-              {/* Filter Periode (Bulan/Tahun) & Rentang Tanggal Manual */}
+              {/* Filter Periode (Bulan/Tahun Dinamis Merekam Mulai 2026) & Rentang Tanggal Manual */}
               <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-50 text-xs">
                 {/* Pilih Bulan */}
                 <select
@@ -793,7 +801,7 @@ export default function Dashboard() {
                   <option value={12}>Desember</option>
                 </select>
 
-                {/* Pilih Tahun */}
+                {/* Pilih Tahun (Mulai dari 2026) */}
                 <select
                   value={selectedYear}
                   onChange={(e) => {
@@ -803,9 +811,11 @@ export default function Dashboard() {
                   disabled={Boolean(startDate && endDate)}
                   className="p-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 font-medium text-gray-700"
                 >
-                  <option value={2025}>2025</option>
-                  <option value={2026}>2026</option>
-                  <option value={2027}>2027</option>
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
                 </select>
 
                 <span className="text-gray-300">|</span>
