@@ -50,7 +50,11 @@ export default function Dashboard() {
   const [selectedWalletFilter, setSelectedWalletFilter] = useState("all");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
 
-  // State Filter Rentang Tanggal
+  // State Filter Bulan & Tahun (Default ke Bulan & Tahun Saat Ini)
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // State Filter Rentang Tanggal Manual
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -103,12 +107,18 @@ export default function Dashboard() {
       setWallets([]);
     }
 
-    // Fetch Transaksi dengan Pagination & Filter Tanggal
+    // Fetch Transaksi dengan Pagination & Filter Tanggal/Bulan/Tahun
     try {
       let url = `/transactions?page=${page}&limit=10`;
       if (startDate && endDate) {
         url += `&start_date=${startDate}&end_date=${endDate}`;
+      } else if (selectedMonth && selectedYear) {
+        const start = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`;
+        const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+        const end = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${lastDay}`;
+        url += `&start_date=${start}&end_date=${end}`;
       }
+
       const txRes = await API.get(url);
       setTransactions(txRes.data.data || []);
       if (txRes.data.pagination) {
@@ -145,7 +155,65 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchData();
-  }, [page, startDate, endDate]);
+  }, [page, startDate, endDate, selectedMonth, selectedYear]);
+
+  // Handler khusus untuk menarik SEMUA data transaksi periode aktif saat ekspor
+  const handleExport = async (exportType) => {
+    try {
+      let url = `/transactions?page=1&limit=10000`; // Tanpa batas pagination
+      if (startDate && endDate) {
+        url += `&start_date=${startDate}&end_date=${endDate}`;
+      } else if (selectedMonth && selectedYear) {
+        const start = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`;
+        const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+        const end = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${lastDay}`;
+        url += `&start_date=${start}&end_date=${end}`;
+      }
+
+      toast.loading("Menyiapkan data ekspor...", { id: "export-toast" });
+      const res = await API.get(url);
+      let allData = res.data.data || [];
+
+      // Filter data lokal sesuai pencarian, dompet, & kategori yang sedang dipilih
+      allData = allData.filter((t) => {
+        const categoryName =
+          t.category?.name ||
+          categories.find((c) => c.id === t.category_id)?.name ||
+          "";
+        const searchLower = searchQuery.toLowerCase();
+
+        const matchesSearch =
+          (t.notes && t.notes.toLowerCase().includes(searchLower)) ||
+          categoryName.toLowerCase().includes(searchLower);
+
+        const matchesWallet =
+          selectedWalletFilter === "all" ||
+          t.wallet_id === Number(selectedWalletFilter);
+
+        const matchesCategory =
+          selectedCategoryFilter === "all" ||
+          t.category_id === Number(selectedCategoryFilter);
+
+        return matchesSearch && matchesWallet && matchesCategory;
+      });
+
+      toast.dismiss("export-toast");
+
+      if (allData.length === 0) {
+        toast.error("Tidak ada data transaksi untuk diekspor");
+        return;
+      }
+
+      if (exportType === "csv") exportToCSV(allData, wallets, categories);
+      if (exportType === "excel") exportToExcel(allData, wallets, categories);
+      if (exportType === "pdf") exportToPDF(allData, wallets, categories);
+
+      toast.success("Berhasil mengunduh laporan!");
+    } catch {
+      toast.dismiss("export-toast");
+      toast.error("Gagal mengunduh data laporan");
+    }
+  };
 
   // ==========================================
   // 3. EVENT HANDLERS (DOMPET, KATEGORI, TRANSAKSI)
@@ -641,25 +709,19 @@ export default function Dashboard() {
               <div className="flex items-center gap-2 text-xs">
                 <span className="text-gray-400 font-medium">Ekspor:</span>
                 <button
-                  onClick={() =>
-                    exportToCSV(filteredTransactions, wallets, categories)
-                  }
+                  onClick={() => handleExport("csv")}
                   className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition cursor-pointer"
                 >
                   📄 CSV
                 </button>
                 <button
-                  onClick={() =>
-                    exportToExcel(filteredTransactions, wallets, categories)
-                  }
+                  onClick={() => handleExport("excel")}
                   className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition cursor-pointer"
                 >
                   📊 Excel
                 </button>
                 <button
-                  onClick={() =>
-                    exportToPDF(filteredTransactions, wallets, categories)
-                  }
+                  onClick={() => handleExport("pdf")}
                   className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded-lg transition cursor-pointer"
                 >
                   🔴 PDF
@@ -705,22 +767,67 @@ export default function Dashboard() {
                 </select>
               </div>
 
-              {/* Filter Rentang Tanggal & Tombol Reset */}
+              {/* Filter Periode (Bulan/Tahun) & Rentang Tanggal Manual */}
               <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-50 text-xs">
-                <span className="text-gray-400 font-medium">
-                  Rentang Tanggal:
-                </span>
+                {/* Pilih Bulan */}
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    setSelectedMonth(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  disabled={Boolean(startDate && endDate)}
+                  className="p-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 font-medium text-gray-700"
+                >
+                  <option value={1}>Januari</option>
+                  <option value={2}>Februari</option>
+                  <option value={3}>Maret</option>
+                  <option value={4}>April</option>
+                  <option value={5}>Mei</option>
+                  <option value={6}>Juni</option>
+                  <option value={7}>Juli</option>
+                  <option value={8}>Agustus</option>
+                  <option value={9}>September</option>
+                  <option value={10}>Oktober</option>
+                  <option value={11}>November</option>
+                  <option value={12}>Desember</option>
+                </select>
+
+                {/* Pilih Tahun */}
+                <select
+                  value={selectedYear}
+                  onChange={(e) => {
+                    setSelectedYear(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  disabled={Boolean(startDate && endDate)}
+                  className="p-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 font-medium text-gray-700"
+                >
+                  <option value={2025}>2025</option>
+                  <option value={2026}>2026</option>
+                  <option value={2027}>2027</option>
+                </select>
+
+                <span className="text-gray-300">|</span>
+
+                <span className="text-gray-400 font-medium">Manual:</span>
                 <input
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setPage(1);
+                  }}
                   className="p-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700"
                 />
                 <span className="text-gray-400">s/d</span>
                 <input
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setPage(1);
+                  }}
                   className="p-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700"
                 />
 
@@ -729,6 +836,7 @@ export default function Dashboard() {
                     onClick={() => {
                       setStartDate("");
                       setEndDate("");
+                      setPage(1);
                     }}
                     className="text-red-500 hover:text-red-700 font-medium text-xs px-2 py-1 rounded-lg bg-red-50 transition cursor-pointer"
                   >
@@ -743,7 +851,7 @@ export default function Dashboard() {
               {filteredTransactions.length === 0 ? (
                 <p className="text-gray-400 text-center py-6 text-sm">
                   {transactions.length === 0
-                    ? "Belum ada transaksi."
+                    ? "Belum ada transaksi pada periode ini."
                     : "Tidak ada data yang cocok."}
                 </p>
               ) : (
