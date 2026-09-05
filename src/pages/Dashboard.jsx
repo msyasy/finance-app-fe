@@ -48,7 +48,6 @@ export default function Dashboard() {
     totalPages: 1,
   });
 
-  // State Modal Konfirmasi
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
     title: "",
@@ -272,7 +271,6 @@ export default function Dashboard() {
     .filter((t) => t.type === "expense")
     .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
 
-  // Olah Data untuk Grafik Pengeluaran per Kategori
   const chartDataMap = {};
   thisMonthTransactions
     .filter((t) => t.type === "expense")
@@ -331,7 +329,6 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Ringkasan Keuangan (3 Card) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
@@ -376,8 +373,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Section Kelola Dompet & Kategori */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
             <h3 className="text-lg font-bold text-gray-800">Daftar Dompet</h3>
             <form onSubmit={handleCreateWallet} className="flex gap-2">
@@ -397,30 +393,44 @@ export default function Dashboard() {
               </button>
             </form>
 
-            <div className="space-y-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-56 overflow-y-auto pr-1">
               {wallets.length === 0 ? (
-                <p className="text-gray-400 text-sm italic">
+                <p className="text-gray-400 text-sm italic col-span-2">
                   Belum ada dompet.
                 </p>
               ) : (
                 wallets.map((w) => (
                   <div
                     key={w.id}
-                    className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 rounded-xl shadow-sm flex justify-between items-center"
+                    className="bg-slate-900 text-white p-3 rounded-xl shadow-sm flex justify-between items-center group hover:bg-slate-800 transition border border-slate-800"
                   >
-                    <div>
-                      <p className="text-blue-100 text-xs font-medium">
+                    <div className="truncate pr-2">
+                      <p className="text-slate-400 text-[10px] font-medium uppercase tracking-wider truncate">
                         {w.name}
                       </p>
-                      <h2 className="text-xl font-bold mt-0.5">
+                      <h2 className="text-sm font-bold mt-0.5 truncate">
                         Rp {parseFloat(w.balance).toLocaleString("id-ID")}
                       </h2>
                     </div>
                     <button
                       onClick={() => handleDeleteWallet(w.id, w.name)}
-                      className="bg-white/20 hover:bg-red-500 text-white text-xs px-2.5 py-1 rounded-lg transition cursor-pointer"
+                      className="text-slate-400 hover:text-red-400 p-1 transition cursor-pointer rounded-lg hover:bg-slate-700/50"
+                      title="Hapus Dompet"
                     >
-                      Hapus
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
                     </button>
                   </div>
                 ))
@@ -465,7 +475,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Form Catat Transaksi */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold text-gray-800 mb-4">
             Catat Transaksi Baru
@@ -545,7 +554,6 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Tabel Transaksi (Lebar 2 Kolom) */}
           <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
             <h3 className="text-lg font-bold text-gray-800">
               Riwayat Transaksi
@@ -709,6 +717,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
       <ConfirmModal
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}
