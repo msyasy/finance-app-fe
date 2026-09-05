@@ -679,23 +679,57 @@ export default function Dashboard() {
           </div>
 
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-            <h3 className="text-lg font-bold text-gray-800 mb-2">
-              Pengeluaran Bulan Ini
-            </h3>
+            <div>
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">
+                    Pengeluaran Bulan Ini
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Analisis alokasi dana
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-lg">
+                  -{formatRupiah(totalExpense)}
+                </span>
+              </div>
+
+              {chartData.length > 0 &&
+                (() => {
+                  const topCategory = [...chartData].sort(
+                    (a, b) => b.value - a.value,
+                  )[0];
+                  const percentage =
+                    totalExpense > 0
+                      ? ((topCategory.value / totalExpense) * 100).toFixed(0)
+                      : 0;
+                  return (
+                    <div className="bg-slate-50 p-3 rounded-xl mb-2 border border-slate-100 flex justify-between items-center text-xs">
+                      <span className="text-gray-500 font-medium">
+                        Pengeluaran Terbesar:
+                      </span>
+                      <span className="font-bold text-slate-800">
+                        {topCategory.name} ({percentage}%)
+                      </span>
+                    </div>
+                  );
+                })()}
+            </div>
+
             {chartData.length === 0 ? (
               <div className="flex-1 flex items-center justify-center text-gray-400 text-xs italic py-10">
                 Belum ada pengeluaran bulan ini.
               </div>
             ) : (
-              <div className="w-full h-64">
+              <div className="w-full h-64 my-auto">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={chartData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={50}
-                      outerRadius={75}
+                      innerRadius={55}
+                      outerRadius={80}
                       paddingAngle={4}
                       dataKey="value"
                     >
@@ -709,7 +743,10 @@ export default function Dashboard() {
                     <Tooltip
                       formatter={(val) => `Rp ${val.toLocaleString("id-ID")}`}
                     />
-                    <Legend iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
+                    <Legend
+                      iconSize={8}
+                      wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
