@@ -4,19 +4,22 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Footer from "./components/Footer";
-import { useAutoLogout } from "./hooks/useAutoLogout"; // Import custom hook
+import { useAutoLogout } from "./hooks/useAutoLogout";
 
 export default function App() {
-  useAutoLogout(); // Panggil hook auto logout di sini
+  useAutoLogout();
 
   return (
     <Router>
+      <Toaster position="top-right" reverseOrder={false} />
+
       <div className="min-h-screen flex flex-col bg-gray-50">
         <main className="flex-grow">
           <Routes>

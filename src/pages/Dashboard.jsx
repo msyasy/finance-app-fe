@@ -1,6 +1,26 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import API from "../services/api";
+import ConfirmModal from "../components/ConfirmModal";
+
+const CHART_COLORS = [
+  "#2563EB",
+  "#16A34A",
+  "#DC2626",
+  "#D97706",
+  "#9333EA",
+  "#0891B2",
+  "#E11D48",
+];
 
 export default function Dashboard() {
   const [wallets, setWallets] = useState([]);
@@ -12,11 +32,14 @@ export default function Dashboard() {
   const [categoryId, setCategoryId] = useState("");
   const [walletId, setWalletId] = useState("");
   const [newWalletName, setNewWalletName] = useState("");
+
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState("expense");
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedWalletFilter, setSelectedWalletFilter] = useState("all");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
+
   const [page, setPage] = useState(1);
   const [paginationMeta, setPaginationMeta] = useState({
     currentPage: 1,
@@ -25,12 +48,20 @@ export default function Dashboard() {
     totalPages: 1,
   });
 
-  const [error, setError] = useState("");
+  // State Modal Konfirmasi
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
   const navigate = useNavigate();
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    toast.success("Berhasil logout");
     navigate("/login");
   };
 
@@ -39,7 +70,6 @@ export default function Dashboard() {
       const walletRes = await API.get("/wallets");
       const fetchedWallets = walletRes.data.data || [];
       setWallets(fetchedWallets);
-
       if (fetchedWallets.length > 0) {
         setWalletId((prev) => (prev ? prev : fetchedWallets[0].id));
       } else {
@@ -52,6 +82,7 @@ export default function Dashboard() {
       }
       setWallets([]);
     }
+
     try {
       const txRes = await API.get(`/transactions?page=${page}&limit=10`);
       setTransactions(txRes.data.data || []);
@@ -66,11 +97,11 @@ export default function Dashboard() {
     } catch {
       setTransactions([]);
     }
+
     try {
       const catRes = await API.get("/categories");
       const fetchedCategories = catRes.data.data || [];
       setCategories(fetchedCategories);
-
       const defaultCat = fetchedCategories.find((c) => c.type === type);
       if (defaultCat) setCategoryId((prev) => (prev ? prev : defaultCat.id));
     } catch {
@@ -94,47 +125,49 @@ export default function Dashboard() {
 
   const handleCreateCategory = async (e) => {
     e.preventDefault();
-    setError("");
     try {
       await API.post("/categories", {
         name: newCategoryName,
         type: newCategoryType,
       });
+      toast.success("Kategori berhasil dibuat!");
       setNewCategoryName("");
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.error || "Gagal membuat kategori");
+      toast.error(err.response?.data?.error || "Gagal membuat kategori");
     }
   };
 
   const handleCreateWallet = async (e) => {
     e.preventDefault();
-    setError("");
     try {
       await API.post("/wallets", {
         name: newWalletName,
         balance: 0,
       });
+      toast.success("Dompet berhasil dibuat!");
       setNewWalletName("");
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.error || "Gagal membuat dompet");
+      toast.error(err.response?.data?.error || "Gagal membuat dompet");
     }
   };
 
-  const handleDeleteWallet = async (id, name) => {
-    if (
-      !window.confirm(
-        `Yakin ingin menghapus dompet "${name}"? Semua transaksi di dalamnya juga akan terhapus.`,
-      )
-    )
-      return;
-    try {
-      await API.delete(`/wallets/${id}`);
-      fetchData();
-    } catch (err) {
-      alert(err.response?.data?.error || "Gagal menghapus dompet");
-    }
+  const handleDeleteWallet = (id, name) => {
+    setModalConfig({
+      isOpen: true,
+      title: "Hapus Dompet",
+      message: `Yakin ingin menghapus dompet "${name}"? Semua transaksi di dalamnya juga akan terhapus.`,
+      onConfirm: async () => {
+        try {
+          await API.delete(`/wallets/${id}`);
+          toast.success("Dompet berhasil dihapus");
+          fetchData();
+        } catch (err) {
+          toast.error(err.response?.data?.error || "Gagal menghapus dompet");
+        }
+      },
+    });
   };
 
   const formatAmountInput = (value) => {
@@ -145,22 +178,19 @@ export default function Dashboard() {
 
   const handleAddTransaction = async (e) => {
     e.preventDefault();
-    setError("");
 
     if (!walletId) {
-      setError("Silakan buat dan pilih dompet terlebih dahulu");
+      toast.error("Silakan buat dan pilih dompet terlebih dahulu");
       return;
     }
-
     if (!categoryId) {
-      setError("Silakan buat dan pilih kategori terlebih dahulu");
+      toast.error("Silakan buat dan pilih kategori terlebih dahulu");
       return;
     }
 
     const cleanAmount = parseFloat(amount.replace(/\./g, ""));
-
     if (isNaN(cleanAmount) || cleanAmount <= 0) {
-      setError("Masukkan nominal yang valid");
+      toast.error("Masukkan nominal yang valid");
       return;
     }
 
@@ -172,22 +202,30 @@ export default function Dashboard() {
         amount: cleanAmount,
         notes: notes,
       });
+      toast.success("Transaksi berhasil dicatat!");
       setAmount("");
       setNotes("");
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.error || "Gagal menambahkan transaksi");
+      toast.error(err.response?.data?.error || "Gagal menambahkan transaksi");
     }
   };
 
-  const handleDeleteTransaction = async (id) => {
-    if (!window.confirm("Yakin ingin menghapus transaksi ini?")) return;
-    try {
-      await API.delete(`/transactions/${id}`);
-      fetchData();
-    } catch {
-      alert("Gagal menghapus transaksi");
-    }
+  const handleDeleteTransaction = (id) => {
+    setModalConfig({
+      isOpen: true,
+      title: "Hapus Transaksi",
+      message: "Yakin ingin menghapus transaksi ini?",
+      onConfirm: async () => {
+        try {
+          await API.delete(`/transactions/${id}`);
+          toast.success("Transaksi dihapus");
+          fetchData();
+        } catch {
+          toast.error("Gagal menghapus transaksi");
+        }
+      },
+    });
   };
 
   const filteredCategories = categories.filter((c) => c.type === type);
@@ -234,6 +272,22 @@ export default function Dashboard() {
     .filter((t) => t.type === "expense")
     .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
 
+  // Olah Data untuk Grafik Pengeluaran per Kategori
+  const chartDataMap = {};
+  thisMonthTransactions
+    .filter((t) => t.type === "expense")
+    .forEach((t) => {
+      const catName =
+        categories.find((c) => c.id === t.category_id)?.name || "Lainnya";
+      chartDataMap[catName] =
+        (chartDataMap[catName] || 0) + parseFloat(t.amount);
+    });
+
+  const chartData = Object.keys(chartDataMap).map((key) => ({
+    name: key,
+    value: chartDataMap[key],
+  }));
+
   const filteredTransactions = transactions.filter((t) => {
     const categoryName =
       t.category?.name ||
@@ -258,9 +312,9 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
+        <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">
               Dashboard Keuangan
@@ -271,116 +325,73 @@ export default function Dashboard() {
           </div>
           <button
             onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition cursor-pointer"
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition cursor-pointer"
           >
             Logout
           </button>
         </div>
 
-        {/* Section Ringkasan Keuangan (3 Card) */}
+        {/* Ringkasan Keuangan (3 Card) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Total Saldo */}
-          <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 Total Saldo Utama
               </p>
               <h3 className="text-xl font-bold text-gray-900 mt-1">
                 {formatRupiah(totalBalance)}
               </h3>
             </div>
-            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                />
-              </svg>
+            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold">
+              Rp
             </div>
           </div>
 
-          {/* Pemasukan */}
-          <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 Pemasukan (Bulan Ini)
               </p>
               <h3 className="text-xl font-bold text-green-600 mt-1">
                 + {formatRupiah(totalIncome)}
               </h3>
             </div>
-            <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 11l5-5m0 0l5 5m-5-5v12"
-                />
-              </svg>
+            <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center font-bold">
+              ↑
             </div>
           </div>
 
-          {/* Pengeluaran */}
-          <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 Pengeluaran (Bulan Ini)
               </p>
               <h3 className="text-xl font-bold text-red-600 mt-1">
                 - {formatRupiah(totalExpense)}
               </h3>
             </div>
-            <div className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 13l-5 5m0 0l-5-5m5 5V6"
-                />
-              </svg>
+            <div className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center font-bold">
+              ↓
             </div>
           </div>
         </div>
 
-        {/* Section Dompet & Kategori */}
+        {/* Section Kelola Dompet & Kategori */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Kelola Dompet */}
-          <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
             <h3 className="text-lg font-bold text-gray-800">Daftar Dompet</h3>
             <form onSubmit={handleCreateWallet} className="flex gap-2">
               <input
                 type="text"
-                placeholder="Nama Dompet (contoh: Cash / BCA)"
+                placeholder="Nama Dompet (contoh: BCA / Cash)"
                 required
                 value={newWalletName}
                 onChange={(e) => setNewWalletName(e.target.value)}
-                className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none flex-1"
+                className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none flex-1"
               />
               <button
                 type="submit"
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg px-4 py-2 transition cursor-pointer"
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition cursor-pointer"
               >
                 + Dompet
               </button>
@@ -388,26 +399,26 @@ export default function Dashboard() {
 
             <div className="space-y-3 pt-2">
               {wallets.length === 0 ? (
-                <p className="text-gray-500 text-sm italic">
+                <p className="text-gray-400 text-sm italic">
                   Belum ada dompet.
                 </p>
               ) : (
                 wallets.map((w) => (
                   <div
                     key={w.id}
-                    className="bg-blue-600 text-white p-4 rounded-xl shadow-md flex justify-between items-center"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 rounded-xl shadow-sm flex justify-between items-center"
                   >
                     <div>
                       <p className="text-blue-100 text-xs font-medium">
                         {w.name}
                       </p>
-                      <h2 className="text-xl font-bold mt-1">
+                      <h2 className="text-xl font-bold mt-0.5">
                         Rp {parseFloat(w.balance).toLocaleString("id-ID")}
                       </h2>
                     </div>
                     <button
                       onClick={() => handleDeleteWallet(w.id, w.name)}
-                      className="bg-red-500/80 hover:bg-red-600 text-white text-xs px-2 py-1 rounded transition cursor-pointer"
+                      className="bg-white/20 hover:bg-red-500 text-white text-xs px-2.5 py-1 rounded-lg transition cursor-pointer"
                     >
                       Hapus
                     </button>
@@ -417,8 +428,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Kelola Kategori */}
-          <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
             <h3 className="text-lg font-bold text-gray-800">
               Tambah Kategori Baru
             </h3>
@@ -429,7 +439,7 @@ export default function Dashboard() {
               <select
                 value={newCategoryType}
                 onChange={(e) => setNewCategoryType(e.target.value)}
-                className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white font-semibold"
+                className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none bg-white font-semibold"
               >
                 <option value="expense">Pengeluaran (Expense)</option>
                 <option value="income">Pemasukan (Income)</option>
@@ -438,15 +448,15 @@ export default function Dashboard() {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Nama Kategori (contoh: Bonus / Investasi)"
+                  placeholder="Nama Kategori (contoh: Investasi)"
                   required
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
-                  className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none flex-1"
+                  className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none flex-1"
                 />
                 <button
                   type="submit"
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg px-4 py-2 transition cursor-pointer"
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition cursor-pointer"
                 >
                   + Kategori
                 </button>
@@ -456,25 +466,18 @@ export default function Dashboard() {
         </div>
 
         {/* Form Catat Transaksi */}
-        <div className="bg-white p-6 rounded-xl shadow-sm">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold text-gray-800 mb-4">
             Catat Transaksi Baru
           </h3>
-          {error && (
-            <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">
-              {error}
-            </div>
-          )}
-
           <form
             onSubmit={handleAddTransaction}
             className="grid grid-cols-1 md:grid-cols-6 gap-3"
           >
-            {/* Dropdown Dompet */}
             <select
               value={walletId}
               onChange={(e) => setWalletId(e.target.value)}
-              className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
               required
             >
               {wallets.length === 0 ? (
@@ -488,21 +491,19 @@ export default function Dashboard() {
               )}
             </select>
 
-            {/* Dropdown Tipe */}
             <select
               value={type}
               onChange={(e) => handleTypeChange(e.target.value)}
-              className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-semibold"
+              className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white font-semibold"
             >
               <option value="expense">Pengeluaran (-)</option>
               <option value="income">Pemasukan (+)</option>
             </select>
 
-            {/* Dropdown Kategori Dinamis */}
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
               required
             >
               {filteredCategories.length === 0 ? (
@@ -516,14 +517,13 @@ export default function Dashboard() {
               )}
             </select>
 
-            {/* Input Nominal Text dengan Format Titik Ribuan */}
             <input
               type="text"
               placeholder="Jumlah (Rp)"
               required
               value={amount}
               onChange={(e) => setAmount(formatAmountInput(e.target.value))}
-              className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
 
             <input
@@ -532,150 +532,190 @@ export default function Dashboard() {
               required
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
 
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg p-2 transition cursor-pointer"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl p-2.5 text-sm transition cursor-pointer"
             >
               + Tambah
             </button>
           </form>
         </div>
 
-        {/* Riwayat Transaksi */}
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">
-            Riwayat Transaksi
-          </h3>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Tabel Transaksi (Lebar 2 Kolom) */}
+          <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+            <h3 className="text-lg font-bold text-gray-800">
+              Riwayat Transaksi
+            </h3>
 
-          {/* Controls Search & Filter */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-            <input
-              type="text"
-              placeholder="Cari transaksi / catatan..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-            />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input
+                type="text"
+                placeholder="Cari transaksi..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="p-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+              />
 
-            <select
-              value={selectedWalletFilter}
-              onChange={(e) => setSelectedWalletFilter(e.target.value)}
-              className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-            >
-              <option value="all">Semua Dompet</option>
-              {wallets.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
-              ))}
-            </select>
+              <select
+                value={selectedWalletFilter}
+                onChange={(e) => setSelectedWalletFilter(e.target.value)}
+                className="p-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              >
+                <option value="all">Semua Dompet</option>
+                {wallets.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </select>
 
-            <select
-              value={selectedCategoryFilter}
-              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-              className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-            >
-              <option value="all">Semua Kategori</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.type === "income" ? "Pemasukan" : "Pengeluaran"})
-                </option>
-              ))}
-            </select>
-          </div>
+              <select
+                value={selectedCategoryFilter}
+                onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                className="p-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              >
+                <option value="all">Semua Kategori</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="divide-y divide-gray-100">
-            {filteredTransactions.length === 0 ? (
-              <p className="text-gray-500 text-center py-4 text-sm">
-                {transactions.length === 0
-                  ? "Belum ada transaksi."
-                  : "Tidak ada transaksi yang cocok dengan pencarian/filter."}
-              </p>
-            ) : (
-              filteredTransactions.map((t) => {
-                const isIncome = t.type === "income";
+            <div className="divide-y divide-gray-100">
+              {filteredTransactions.length === 0 ? (
+                <p className="text-gray-400 text-center py-6 text-sm">
+                  {transactions.length === 0
+                    ? "Belum ada transaksi."
+                    : "Tidak ada data yang cocok."}
+                </p>
+              ) : (
+                filteredTransactions.map((t) => {
+                  const isIncome = t.type === "income";
+                  const walletName =
+                    t.wallet?.name ||
+                    wallets.find((w) => w.id === t.wallet_id)?.name ||
+                    "Dompet";
+                  const categoryName =
+                    t.category?.name ||
+                    categories.find((c) => c.id === t.category_id)?.name;
 
-                // Cari nama dompet & kategori
-                const walletName =
-                  t.wallet?.name ||
-                  wallets.find((w) => w.id === t.wallet_id)?.name ||
-                  "Dompet";
-                const categoryName =
-                  t.category?.name ||
-                  categories.find((c) => c.id === t.category_id)?.name;
-
-                return (
-                  <div
-                    key={t.id}
-                    className="py-3 flex justify-between items-center"
-                  >
-                    <div>
-                      <p className="font-semibold text-gray-800">
-                        {t.notes} {categoryName ? `• ${categoryName}` : ""}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {formatDate(t.created_at || t.date)} •{" "}
-                        <span className="font-medium text-gray-500">
-                          {walletName}
+                  return (
+                    <div
+                      key={t.id}
+                      className="py-3 flex justify-between items-center"
+                    >
+                      <div>
+                        <p className="font-semibold text-gray-800 text-sm">
+                          {t.notes} {categoryName ? `• ${categoryName}` : ""}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {formatDate(t.created_at || t.date)} •{" "}
+                          <span className="font-medium text-gray-500">
+                            {walletName}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`font-bold text-sm ${
+                            isIncome ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
+                          {isIncome ? "+" : "-"} Rp{" "}
+                          {parseFloat(t.amount).toLocaleString("id-ID")}
                         </span>
-                      </p>
+                        <button
+                          onClick={() => handleDeleteTransaction(t.id)}
+                          className="text-red-400 hover:text-red-600 text-xs font-medium cursor-pointer"
+                        >
+                          Hapus
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span
-                        className={`font-bold ${
-                          isIncome ? "text-green-600" : "text-red-600"
-                        }`}
-                      >
-                        {isIncome ? "+" : "-"} Rp{" "}
-                        {parseFloat(t.amount).toLocaleString("id-ID")}
-                      </span>
-                      <button
-                        onClick={() => handleDeleteTransaction(t.id)}
-                        className="text-red-400 hover:text-red-700 text-sm font-semibold cursor-pointer"
-                      >
-                        Hapus
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
+                  );
+                })
+              )}
+            </div>
+
+            {paginationMeta.totalPages > 1 && (
+              <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                <button
+                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={page === 1}
+                  className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition cursor-pointer"
+                >
+                  &larr; Prev
+                </button>
+                <span className="text-xs text-gray-400 font-medium">
+                  {paginationMeta.currentPage} / {paginationMeta.totalPages}
+                </span>
+                <button
+                  onClick={() =>
+                    setPage((prev) =>
+                      Math.min(prev + 1, paginationMeta.totalPages),
+                    )
+                  }
+                  disabled={page >= paginationMeta.totalPages}
+                  className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition cursor-pointer"
+                >
+                  Next &rarr;
+                </button>
+              </div>
             )}
           </div>
 
-          {/* Kontrol Navigasi Pagination */}
-          {paginationMeta.totalPages > 1 && (
-            <div className="flex justify-between items-center pt-6 mt-4 border-t border-gray-100">
-              <button
-                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                disabled={page === 1}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
-              >
-                &larr; Sebelumnya
-              </button>
-
-              <span className="text-xs text-gray-500 font-medium">
-                Halaman {paginationMeta.currentPage} dari{" "}
-                {paginationMeta.totalPages}
-              </span>
-
-              <button
-                onClick={() =>
-                  setPage((prev) =>
-                    Math.min(prev + 1, paginationMeta.totalPages),
-                  )
-                }
-                disabled={page >= paginationMeta.totalPages}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
-              >
-                Selanjutnya &rarr;
-              </button>
-            </div>
-          )}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+            <h3 className="text-lg font-bold text-gray-800 mb-2">
+              Pengeluaran Bulan Ini
+            </h3>
+            {chartData.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-gray-400 text-xs italic py-10">
+                Belum ada pengeluaran bulan ini.
+              </div>
+            ) : (
+              <div className="w-full h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={75}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {chartData.map((_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={CHART_COLORS[index % CHART_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(val) => `Rp ${val.toLocaleString("id-ID")}`}
+                    />
+                    <Legend iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        onConfirm={modalConfig.onConfirm}
+      />
     </div>
   );
 }
