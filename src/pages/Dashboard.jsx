@@ -13,6 +13,7 @@ import API from "../services/api";
 import ConfirmModal from "../components/ConfirmModal";
 import TransferModal from "../components/TransferModal";
 import BudgetProgressCard from "../components/BudgetProgressCard";
+import CashFlowChart from "../components/CashFlowChart";
 
 // Warna Palet untuk Grafik Pengeluaran
 const CHART_COLORS = [
@@ -41,6 +42,7 @@ export default function Dashboard() {
 
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState("expense");
+  const [cashFlowData, setCashFlowData] = useState([]);
 
   // Filter & Pencarian
   const [searchQuery, setSearchQuery] = useState("");
@@ -129,6 +131,14 @@ export default function Dashboard() {
       if (defaultCat) setCategoryId((prev) => (prev ? prev : defaultCat.id));
     } catch {
       setCategories([]);
+    }
+
+    // Fetch Tren Arus Kas Bulanan
+    try {
+      const cfRes = await API.get("/transactions/cashflow");
+      setCashFlowData(cfRes.data.data || []);
+    } catch {
+      setCashFlowData([]);
     }
   };
 
@@ -607,14 +617,17 @@ export default function Dashboard() {
           </form>
         </div>
 
-        {/* BAGIAN 5.5: BATAS ANGGARAN BULANAN (BUDGETING PROGRESS CARD) */}
+        {/* BAGIAN 5.5: GRAFIK TREN ARUS KAS BULANAN */}
+        <CashFlowChart data={cashFlowData} />
+
+        {/* BAGIAN 5.6: BATAS ANGGARAN BULANAN (BUDGETING PROGRESS CARD) */}
         <BudgetProgressCard
           categories={categories}
           transactions={transactions}
           onBudgetUpdated={fetchData}
         />
 
-        {/* BAGIAN 5.6: TABEL RIWAYAT TRANSAKSI & GRAFIK PENGELUARAN */}
+        {/* BAGIAN 5.7: TABEL RIWAYAT TRANSAKSI & GRAFIK PENGELUARAN */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Tabel Riwayat Transaksi (2 Kolom Grid) */}
           <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
@@ -858,7 +871,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* BAGIAN 5.7: MODAL DIALOGS (CONFIRM & TRANSFER) */}
+      {/* BAGIAN 5.8: MODAL DIALOGS (CONFIRM & TRANSFER) */}
       <ConfirmModal
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}
