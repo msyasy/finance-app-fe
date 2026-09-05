@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { exportToCSV, exportToExcel, exportToPDF } from "../utils/exportUtils";
 import API from "../services/api";
 import ConfirmModal from "../components/ConfirmModal";
 import TransferModal from "../components/TransferModal";
@@ -631,9 +632,40 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Tabel Riwayat Transaksi (2 Kolom Grid) */}
           <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
-            <h3 className="text-lg font-bold text-gray-800">
-              Riwayat Transaksi
-            </h3>
+            {/* Header & Tombol Ekspor Data */}
+            <div className="flex flex-wrap justify-between items-center gap-2">
+              <h3 className="text-lg font-bold text-gray-800">
+                Riwayat Transaksi
+              </h3>
+
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-gray-400 font-medium">Ekspor:</span>
+                <button
+                  onClick={() =>
+                    exportToCSV(filteredTransactions, wallets, categories)
+                  }
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition cursor-pointer"
+                >
+                  📄 CSV
+                </button>
+                <button
+                  onClick={() =>
+                    exportToExcel(filteredTransactions, wallets, categories)
+                  }
+                  className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition cursor-pointer"
+                >
+                  📊 Excel
+                </button>
+                <button
+                  onClick={() =>
+                    exportToPDF(filteredTransactions, wallets, categories)
+                  }
+                  className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded-lg transition cursor-pointer"
+                >
+                  🔴 PDF
+                </button>
+              </div>
+            </div>
 
             {/* Filter & Search Bar */}
             <div className="space-y-3">
