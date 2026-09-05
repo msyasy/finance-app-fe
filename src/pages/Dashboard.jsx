@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import API from "../services/api";
 import ConfirmModal from "../components/ConfirmModal";
+import TransferModal from "../components/TransferModal";
 
 const CHART_COLORS = [
   "#2563EB",
@@ -54,6 +55,8 @@ export default function Dashboard() {
     message: "",
     onConfirm: () => {},
   });
+
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -375,7 +378,18 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
-            <h3 className="text-lg font-bold text-gray-800">Daftar Dompet</h3>
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-800">Daftar Dompet</h3>
+              {wallets.length >= 2 && (
+                <button
+                  onClick={() => setIsTransferOpen(true)}
+                  className="text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition cursor-pointer"
+                >
+                  ⇄ Transfer Saldo
+                </button>
+              )}
+            </div>
+
             <form onSubmit={handleCreateWallet} className="flex gap-2">
               <input
                 type="text"
@@ -761,6 +775,13 @@ export default function Dashboard() {
         message={modalConfig.message}
         onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
         onConfirm={modalConfig.onConfirm}
+      />
+
+      <TransferModal
+        isOpen={isTransferOpen}
+        onClose={() => setIsTransferOpen(false)}
+        wallets={wallets}
+        onSuccess={fetchData}
       />
     </div>
   );
