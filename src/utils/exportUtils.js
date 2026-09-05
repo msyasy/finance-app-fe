@@ -10,9 +10,12 @@ const formatRupiah = (val) =>
     maximumFractionDigits: 0,
   }).format(val || 0);
 
-// Helper Menyiapkan Data Bertipe Rapi
+// Helper Menyiapkan Data Bertipe Rapi & Hitung Total
 const prepareData = (transactions, wallets, categories) => {
-  return transactions.map((t, index) => {
+  let totalIncome = 0;
+  let totalExpense = 0;
+
+  const formattedRows = transactions.map((t, index) => {
     const walletName =
       t.wallet?.name ||
       wallets.find((w) => w.id === t.wallet_id)?.name ||
@@ -22,22 +25,43 @@ const prepareData = (transactions, wallets, categories) => {
       categories.find((c) => c.id === t.category_id)?.name ||
       "-";
 
+    const amount = parseFloat(t.amount || 0);
+    if (t.type === "income") {
+      totalIncome += amount;
+    } else {
+      totalExpense += amount;
+    }
+
     return {
       No: index + 1,
       Tanggal: new Date(t.created_at || Date.now()).toLocaleDateString("id-ID"),
       Dompet: walletName,
       Kategori: categoryName,
       Tipe: t.type === "income" ? "Pemasukan" : "Pengeluaran",
-      Nominal: t.amount,
+      NominalRaw: amount,
+      NominalFormatted: formatRupiah(amount),
       Catatan: t.notes || "-",
     };
   });
+
+  const netTotal = totalIncome - totalExpense;
+
+  return {
+    rows: formattedRows,
+    totalIncome,
+    totalExpense,
+    netTotal,
+  };
 };
 
-// 1. EXPORT KE CSV
+// 1. EXPORT KE CSV (Dengan Baris Total)
 export const exportToCSV = (transactions, wallets, categories) => {
-  const data = prepareData(transactions, wallets, categories);
-  if (data.length === 0)
+  const { rows, totalIncome, totalExpense, netTotal } = prepareData(
+    transactions,
+    wallets,
+    categories,
+  );
+  if (rows.length === 0)
     return alert("Tidak ada data transaksi untuk diekspor");
 
   const headers = [
@@ -51,17 +75,21 @@ export const exportToCSV = (transactions, wallets, categories) => {
   ];
   const csvRows = [
     headers.join(","),
-    ...data.map((row) =>
+    ...rows.map((row) =>
       [
         row.No,
         `"${row.Tanggal}"`,
         `"${row.Dompet}"`,
         `"${row.Kategori}"`,
         `"${row.Tipe}"`,
-        row.Nominal,
+        row.NominalRaw,
         `"${row.Catatan}"`,
       ].join(","),
     ),
+    "",
+    `"","","","","TOTAL PEMASUKAN",${totalIncome},""`,
+    `"","","","","TOTAL PENGELUARAN",${totalExpense},""`,
+    `"","","","","TOTAL BERSIH (NET)",${netTotal},""`,
   ];
 
   const blob = new Blob([csvRows.join("\n")], {
@@ -76,23 +104,48 @@ export const exportToCSV = (transactions, wallets, categories) => {
   document.body.removeChild(link);
 };
 
-// 2. EXPORT KE EXCEL (.xlsx)
+// 2. EXPORT KE EXCEL (.xlsx Dengan Baris Total)
 export const exportToExcel = (transactions, wallets, categories) => {
-  const data = prepareData(transactions, wallets, categories);
-  if (data.length === 0)
+  const { rows, totalIncome, totalExpense, netTotal } = prepareData(
+    transactions,
+    wallets,
+    categories,
+  );
+  if (rows.length === 0)
     return alert("Tidak ada data transaksi untuk diekspor");
 
-  const worksheet = XLSX.utils.json_to_sheet(data);
+  const excelRows = rows.map((r) => ({
+    No: r.No,
+    Tanggal: r.Tanggal,
+    Dompet: r.Dompet,
+    Kategori: r.Kategori,
+    Tipe: r.Tipe,
+    Nominal: r.NominalRaw,
+    Catatan: r.Catatan,
+  }));
+
+  excelRows.push(
+    {},
+    { Tipe: "TOTAL PEMASUKAN", Nominal: totalIncome },
+    { Tipe: "TOTAL PENGELUARAN", Nominal: totalExpense },
+    { Tipe: "TOTAL BERSIH (NET)", Nominal: netTotal },
+  );
+
+  const worksheet = XLSX.utils.json_to_sheet(excelRows);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Transaksi");
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Transaksi");
 
   XLSX.writeFile(workbook, `Laporan_Transaksi_${Date.now()}.xlsx`);
 };
 
-// EXPORT KE PDF
+// 3. EXPORT KE PDF (Dengan Sub-Header Ringkasan & Footer Tabel Total)
 export const exportToPDF = (transactions, wallets, categories) => {
-  const rawData = prepareData(transactions, wallets, categories);
-  if (rawData.length === 0)
+  const { rows, totalIncome, totalExpense, netTotal } = prepareData(
+    transactions,
+    wallets,
+    categories,
+  );
+  if (rows.length === 0)
     return alert("Tidak ada data transaksi untuk diekspor");
 
   const doc = new jsPDF();
@@ -100,10 +153,23 @@ export const exportToPDF = (transactions, wallets, categories) => {
   // Judul Dokumen
   doc.setFontSize(16);
   doc.text("Laporan Riwayat Transaksi", 14, 15);
-  doc.setFontSize(10);
-  doc.text(`Dicetak pada: ${new Date().toLocaleDateString("id-ID")}`, 14, 22);
 
-  // Tabel Data
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  doc.text(`Dicetak pada: ${new Date().toLocaleDateString("id-ID")}`, 14, 21);
+
+  // Sub-Header Ringkasan Total Periode Ini
+  doc.setFontSize(9);
+  doc.setTextColor(30);
+  doc.text(
+    `Masuk: ${formatRupiah(totalIncome)}   |   Keluar: ${formatRupiah(
+      totalExpense,
+    )}   |   Bersih: ${formatRupiah(netTotal)}`,
+    14,
+    27,
+  );
+
+  // Data Tabel
   const tableColumn = [
     "No",
     "Tanggal",
@@ -113,23 +179,35 @@ export const exportToPDF = (transactions, wallets, categories) => {
     "Nominal",
     "Catatan",
   ];
-  const tableRows = rawData.map((item) => [
+  const tableRows = rows.map((item) => [
     item.No,
     item.Tanggal,
     item.Dompet,
     item.Kategori,
     item.Tipe,
-    formatRupiah(item.Nominal),
+    item.NominalFormatted,
     item.Catatan,
   ]);
 
-  // autotable
+  // Baris Footer Tabel Total
+  const tableFoot = [
+    ["", "", "", "", "Total Pemasukan", formatRupiah(totalIncome), ""],
+    ["", "", "", "", "Total Pengeluaran", formatRupiah(totalExpense), ""],
+    ["", "", "", "", "Saldo Bersih (Net)", formatRupiah(netTotal), ""],
+  ];
+
   autoTable(doc, {
     head: [tableColumn],
     body: tableRows,
-    startY: 28,
+    foot: tableFoot,
+    startY: 32,
     theme: "striped",
     headStyles: { fillColor: [37, 99, 235] },
+    footStyles: {
+      fillColor: [241, 245, 249],
+      textColor: [15, 23, 42],
+      fontStyle: "bold",
+    },
   });
 
   doc.save(`Laporan_Transaksi_${Date.now()}.pdf`);
