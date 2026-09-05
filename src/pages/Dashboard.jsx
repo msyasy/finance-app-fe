@@ -12,7 +12,9 @@ import {
 import API from "../services/api";
 import ConfirmModal from "../components/ConfirmModal";
 import TransferModal from "../components/TransferModal";
+import BudgetProgressCard from "../components/BudgetProgressCard";
 
+// Warna Palet untuk Grafik Pengeluaran
 const CHART_COLORS = [
   "#2563EB",
   "#16A34A",
@@ -24,6 +26,7 @@ const CHART_COLORS = [
 ];
 
 export default function Dashboard() {
+  // 1. STATE MANAGEMENT
   const [wallets, setWallets] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -37,10 +40,12 @@ export default function Dashboard() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState("expense");
 
+  // Filter & Pencarian
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedWalletFilter, setSelectedWalletFilter] = useState("all");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
 
+  // Pagination
   const [page, setPage] = useState(1);
   const [paginationMeta, setPaginationMeta] = useState({
     currentPage: 1,
@@ -49,17 +54,18 @@ export default function Dashboard() {
     totalPages: 1,
   });
 
+  // Modal Dialog States
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
     title: "",
     message: "",
     onConfirm: () => {},
   });
-
   const [isTransferOpen, setIsTransferOpen] = useState(false);
 
   const navigate = useNavigate();
 
+  // 2. LIFECYCLE & DATA FETCHING
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -68,6 +74,7 @@ export default function Dashboard() {
   };
 
   const fetchData = async () => {
+    // Fetch Daftar Dompet
     try {
       const walletRes = await API.get("/wallets");
       const fetchedWallets = walletRes.data.data || [];
@@ -85,6 +92,7 @@ export default function Dashboard() {
       setWallets([]);
     }
 
+    // Fetch Transaksi dengan Pagination
     try {
       const txRes = await API.get(`/transactions?page=${page}&limit=10`);
       setTransactions(txRes.data.data || []);
@@ -100,6 +108,7 @@ export default function Dashboard() {
       setTransactions([]);
     }
 
+    // Fetch Daftar Kategori
     try {
       const catRes = await API.get("/categories");
       const fetchedCategories = catRes.data.data || [];
@@ -115,6 +124,7 @@ export default function Dashboard() {
     fetchData();
   }, [page]);
 
+  // 3. EVENT HANDLERS (DOMPET, KATEGORI, TRANSAKSI)
   const handleTypeChange = (newType) => {
     setType(newType);
     const availableCats = categories.filter((c) => c.type === newType);
@@ -230,6 +240,7 @@ export default function Dashboard() {
     });
   };
 
+  // 4. HELPER & KALKULASI RINGKASAN KEUSNGAN
   const filteredCategories = categories.filter((c) => c.type === type);
 
   const formatRupiah = (num) => {
@@ -274,6 +285,7 @@ export default function Dashboard() {
     .filter((t) => t.type === "expense")
     .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
 
+  // Kalkulasi data untuk Grafik Donut Pengeluaran
   const chartDataMap = {};
   thisMonthTransactions
     .filter((t) => t.type === "expense")
@@ -289,6 +301,7 @@ export default function Dashboard() {
     value: chartDataMap[key],
   }));
 
+  // Filter Transaksi Berdasarkan Pencarian, Dompet, dan Kategori
   const filteredTransactions = transactions.filter((t) => {
     const categoryName =
       t.category?.name ||
@@ -311,10 +324,11 @@ export default function Dashboard() {
     return matchesSearch && matchesWallet && matchesCategory;
   });
 
+  // 5. TAMPILAN DASHBOARD (JSX)
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* Header */}
+        {/* BAGIAN 5.1: HEADER DASHBOARD                                  */}
         <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">
@@ -332,7 +346,9 @@ export default function Dashboard() {
           </button>
         </div>
 
+        {/* BAGIAN 5.2: CARD RINGKASAN SALDO & ARUS KAS                   */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Total Saldo Utama */}
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -347,6 +363,7 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Pemasukan Bulan Ini */}
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -361,6 +378,7 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Pengeluaran Bulan Ini */}
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -376,7 +394,9 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* BAGIAN 5.3: KELOLA DOMPET & KATEGORI                          */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+          {/* Kelola Daftar Dompet */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-bold text-gray-800">Daftar Dompet</h3>
@@ -452,6 +472,7 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Kelola Tambah Kategori */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
             <h3 className="text-lg font-bold text-gray-800">
               Tambah Kategori Baru
@@ -489,6 +510,7 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* BAGIAN 5.4: FORM CATAT TRANSAKSI BARU                        */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold text-gray-800 mb-4">
             Catat Transaksi Baru
@@ -567,12 +589,22 @@ export default function Dashboard() {
           </form>
         </div>
 
+        {/* BAGIAN 5.5: BATAS ANGGARAN BULANAN (BUDGETING PROGRESS CARD)   */}
+        <BudgetProgressCard
+          categories={categories}
+          transactions={transactions}
+          onBudgetUpdated={fetchData}
+        />
+
+        {/* BAGIAN 5.6: TABEL RIWAYAT TRANSAKSI & GRAFIK PENGELUARAN      */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Tabel Riwayat Transaksi (2 Kolom Grid) */}
           <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
             <h3 className="text-lg font-bold text-gray-800">
               Riwayat Transaksi
             </h3>
 
+            {/* Filter & Search Bar */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <input
                 type="text"
@@ -609,6 +641,7 @@ export default function Dashboard() {
               </select>
             </div>
 
+            {/* List Transaksi */}
             <div className="divide-y divide-gray-100">
               {filteredTransactions.length === 0 ? (
                 <p className="text-gray-400 text-center py-6 text-sm">
@@ -665,6 +698,7 @@ export default function Dashboard() {
               )}
             </div>
 
+            {/* Pagination Controls */}
             {paginationMeta.totalPages > 1 && (
               <div className="flex justify-between items-center pt-4 border-t border-gray-100">
                 <button
@@ -692,6 +726,7 @@ export default function Dashboard() {
             )}
           </div>
 
+          {/* Card Grafik Pengeluaran (1 Kolom Grid) */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-start mb-3">
@@ -708,6 +743,7 @@ export default function Dashboard() {
                 </span>
               </div>
 
+              {/* Highlight Kategori Terbesar */}
               {chartData.length > 0 &&
                 (() => {
                   const topCategory = [...chartData].sort(
@@ -730,6 +766,7 @@ export default function Dashboard() {
                 })()}
             </div>
 
+            {/* Recharts Donut Pie */}
             {chartData.length === 0 ? (
               <div className="flex-1 flex items-center justify-center text-gray-400 text-xs italic py-10">
                 Belum ada pengeluaran bulan ini.
@@ -769,6 +806,7 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* BAGIAN 5.7: MODAL DIALOGS (CONFIRM & TRANSFER)                */}
       <ConfirmModal
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}
