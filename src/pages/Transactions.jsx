@@ -162,10 +162,23 @@ export default function Transactions() {
         amount: cleanAmount,
         notes,
       });
+
       toast.success("Transaksi berhasil dicatat!");
       setAmount("");
       setNotes("");
-      fetchTransactions();
+
+      // Reset filter tabel agar transaksi baru pasti langsung terlihat
+      setSearchQuery("");
+      setSelectedWalletFilter("all");
+      setSelectedCategoryFilter("all");
+
+      // Reset ke halaman 1 & muat ulang mutasi + saldo dompet
+      if (page !== 1) {
+        setPage(1);
+      } else {
+        fetchTransactions();
+      }
+      fetchMasterData();
     } catch (err) {
       toast.error(err.response?.data?.error || "Gagal mencatat transaksi");
     }
@@ -181,6 +194,7 @@ export default function Transactions() {
           await API.delete(`/transactions/${id}`);
           toast.success("Transaksi berhasil dihapus");
           fetchTransactions();
+          fetchMasterData();
         } catch {
           toast.error("Gagal menghapus transaksi");
         }
