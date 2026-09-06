@@ -5,11 +5,13 @@ import ConfirmModal from "../components/ConfirmModal";
 
 export default function Categories() {
   const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Form State
   const [name, setName] = useState("");
   const [type, setType] = useState("expense");
-  const [editingId, setEditingId] = useState(null);
-  const [editName, setEditName] = useState("");
 
+  // Modal State
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
     title: "",
@@ -17,12 +19,22 @@ export default function Categories() {
     onConfirm: () => {},
   });
 
+  // Fetch Kategori dari Backend
   const fetchCategories = async () => {
+    setLoading(true);
     try {
       const res = await API.get("/categories");
-      setCategories(res.data.data || []);
-    } catch {
-      toast.error("Gagal memuat master kategori");
+      const data =
+        res.data?.data ||
+        res.data?.categories ||
+        (Array.isArray(res.data) ? res.data : []);
+      setCategories(data);
+    } catch (err) {
+      console.error("Gagal memuat kategori:", err);
+      toast.error("Gagal memuat data kategori dari server");
+      setCategories([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -30,66 +42,58 @@ export default function Categories() {
     fetchCategories();
   }, []);
 
-  const handleCreateCategory = async (e) => {
+  // Tambah Kategori Baru
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim()) return toast.error("Nama kategori tidak boleh kosong");
 
     try {
-      await API.post("/categories", { name: name.trim(), type });
-      toast.success("Kategori berhasil ditambahkan!");
+      await API.post("/categories", {
+        name,
+        type,
+      });
+
+      toast.success("Kategori baru berhasil ditambahkan!");
       setName("");
       fetchCategories();
     } catch (err) {
-      toast.error(err.response?.data?.error || "Gagal membuat kategori");
+      toast.error(err.response?.data?.error || "Gagal menyimpan kategori");
     }
   };
 
-  const handleUpdateCategory = async (id) => {
-    if (!editName.trim()) return toast.error("Nama kategori tidak boleh kosong");
-
-    try {
-      await API.put(`/categories/${id}`, { name: editName.trim() });
-      toast.success("Kategori berhasil diperbarui!");
-      setEditingId(null);
-      setEditName("");
-      fetchCategories();
-    } catch (err) {
-      toast.error(err.response?.data?.error || "Gagal memperbarui kategori");
-    }
-  };
-
-  const handleDeleteCategory = (id, catName) => {
+  const handleDelete = (id) => {
     setModalConfig({
       isOpen: true,
       title: "Hapus Kategori",
-      message: `Yakin ingin menghapus kategori "${catName}"? Kategori yang sudah dipakai di transaksi tidak akan dapat dihapus.`,
+      message: "Yakin ingin menghapus kategori ini?",
       onConfirm: async () => {
         try {
           await API.delete(`/categories/${id}`);
-          toast.success("Kategori berhasil dihapus!");
+          toast.success("Kategori berhasil dihapus");
           fetchCategories();
-        } catch (err) {
-          toast.error(
-            err.response?.data?.error ||
-              "Gagal menghapus kategori. Pastikan tidak ada transaksi yang menggunakan kategori ini."
-          );
+        } catch {
+          toast.error("Gagal menghapus kategori");
         }
       },
     });
   };
 
-  const expenseCategories = categories.filter((c) => c.type === "expense");
-  const incomeCategories = categories.filter((c) => c.type === "income");
+  const expenseCategories = categories.filter(
+    (c) => c.type?.toLowerCase() === "expense"
+  );
+  const incomeCategories = categories.filter(
+    (c) => c.type?.toLowerCase() === "income"
+  );
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header Halaman */}
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Header */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-          Kelola Kategori
+          Kelola Kategori Transaksi
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Atur pengelompokan jenis transaksi pemasukan dan pengeluaran kamu
+          Atur pengelompokan jenis pemasukan dan pengeluaran kamu
         </p>
       </div>
 
@@ -98,179 +102,88 @@ export default function Categories() {
         <h3 className="text-base font-bold text-gray-800 dark:text-white">
           Tambah Kategori Baru
         </h3>
-        <form
-          onSubmit={handleCreateCategory}
-          className="grid grid-cols-1 md:grid-cols-4 gap-3"
-        >
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input
+            type="text"
+            placeholder="Nama Kategori (Contoh: Makanan, Gaji)"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+          />
           <select
             value={type}
             onChange={(e) => setType(e.target.value)}
-            className="p-3 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+            className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="expense">Pengeluaran (-)</option>
             <option value="income">Pemasukan (+)</option>
           </select>
-
-          <input
-            type="text"
-            placeholder="Nama Kategori (contoh: Makanan, Gaji, Service)"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="md:col-span-2 p-3 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-
           <button
             type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl p-3 text-xs transition cursor-pointer"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl p-2.5 text-xs transition cursor-pointer"
           >
-            + Simpan Kategori
+            Tambah Kategori
           </button>
         </form>
       </div>
 
-      {/* Daftar Kategori Dua Kolom (Pengeluaran vs Pemasukan) */}
+      {/* Daftar Kategori (Grid: Pengeluaran & Pemasukan) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Kolom Pengeluaran */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors space-y-4">
-          <div className="flex justify-between items-center border-b border-gray-100 dark:border-slate-800 pb-3">
-            <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
-              Kategori Pengeluaran ({expenseCategories.length})
-            </h3>
-          </div>
-
-          <div className="divide-y divide-gray-100 dark:divide-slate-800">
-            {expenseCategories.length === 0 ? (
-              <p className="text-xs text-gray-400 dark:text-gray-500 italic py-4 text-center">
-                Belum ada kategori pengeluaran.
-              </p>
-            ) : (
-              expenseCategories.map((cat) => (
-                <div
-                  key={cat.id}
-                  className="py-3 flex justify-between items-center text-xs"
-                >
-                  {editingId === cat.id ? (
-                    <div className="flex gap-2 items-center w-full">
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="p-1.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-lg text-xs w-full outline-none"
-                      />
-                      <button
-                        onClick={() => handleUpdateCategory(cat.id)}
-                        className="bg-blue-600 text-white px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer"
-                      >
-                        Simpan
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-lg text-xs cursor-pointer"
-                      >
-                        Batal
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">
-                        {cat.name}
-                      </span>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => {
-                            setEditingId(cat.id);
-                            setEditName(cat.name);
-                          }}
-                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                          className="text-red-500 dark:text-red-400 hover:underline font-medium cursor-pointer"
-                        >
-                          Hapus
-                        </button>
-                      </div>
-                    </>
-                  )}
+        {/* Kategori Pengeluaran */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 space-y-4">
+          <h3 className="text-base font-bold text-red-600 dark:text-red-400">
+            Kategori Pengeluaran (-)
+          </h3>
+          {loading ? (
+            <p className="text-gray-400 text-center py-6 text-xs">Memuat...</p>
+          ) : expenseCategories.length === 0 ? (
+            <p className="text-gray-400 text-center py-6 text-xs">Belum ada kategori pengeluaran.</p>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-slate-800">
+              {expenseCategories.map((c) => (
+                <div key={c.id} className="py-3 flex justify-between items-center">
+                  <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                    {c.name}
+                  </span>
+                  <button
+                    onClick={() => handleDelete(c.id)}
+                    className="text-red-400 hover:text-red-600 text-xs font-medium cursor-pointer"
+                  >
+                    Hapus
+                  </button>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Kolom Pemasukan */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors space-y-4">
-          <div className="flex justify-between items-center border-b border-gray-100 dark:border-slate-800 pb-3">
-            <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span>
-              Kategori Pemasukan ({incomeCategories.length})
-            </h3>
-          </div>
-
-          <div className="divide-y divide-gray-100 dark:divide-slate-800">
-            {incomeCategories.length === 0 ? (
-              <p className="text-xs text-gray-400 dark:text-gray-500 italic py-4 text-center">
-                Belum ada kategori pemasukan.
-              </p>
-            ) : (
-              incomeCategories.map((cat) => (
-                <div
-                  key={cat.id}
-                  className="py-3 flex justify-between items-center text-xs"
-                >
-                  {editingId === cat.id ? (
-                    <div className="flex gap-2 items-center w-full">
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="p-1.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-lg text-xs w-full outline-none"
-                      />
-                      <button
-                        onClick={() => handleUpdateCategory(cat.id)}
-                        className="bg-blue-600 text-white px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer"
-                      >
-                        Simpan
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-lg text-xs cursor-pointer"
-                      >
-                        Batal
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">
-                        {cat.name}
-                      </span>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => {
-                            setEditingId(cat.id);
-                            setEditName(cat.name);
-                          }}
-                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                          className="text-red-500 dark:text-red-400 hover:underline font-medium cursor-pointer"
-                        >
-                          Hapus
-                        </button>
-                      </div>
-                    </>
-                  )}
+        {/* Kategori Pemasukan */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 space-y-4">
+          <h3 className="text-base font-bold text-green-600 dark:text-green-400">
+            Kategori Pemasukan (+)
+          </h3>
+          {loading ? (
+            <p className="text-gray-400 text-center py-6 text-xs">Memuat...</p>
+          ) : incomeCategories.length === 0 ? (
+            <p className="text-gray-400 text-center py-6 text-xs">Belum ada kategori pemasukan.</p>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-slate-800">
+              {incomeCategories.map((c) => (
+                <div key={c.id} className="py-3 flex justify-between items-center">
+                  <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                    {c.name}
+                  </span>
+                  <button
+                    onClick={() => handleDelete(c.id)}
+                    className="text-red-400 hover:text-red-600 text-xs font-medium cursor-pointer"
+                  >
+                    Hapus
+                  </button>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
