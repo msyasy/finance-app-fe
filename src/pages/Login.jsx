@@ -23,17 +23,23 @@ export default function Login() {
         localStorage.setItem("token", token);
       }
 
-      // 2. Simpan Data User (agar nama & profil di Dashboard terbaca dinamis)
-      const userData = resData?.user || response.data?.user;
-      if (userData) {
-        localStorage.setItem("user", JSON.stringify(userData));
-      }
+      // 2. Simpan Data User (Gunakan fallback jika backend hanya kirim token)
+      const userData =
+        resData?.user ||
+        response.data?.user ||
+        resData?.profile ||
+        (resData?.name ? resData : null) ||
+        { email, name: email.split("@")[0] };
+
+      localStorage.setItem("user", JSON.stringify(userData));
 
       // 3. Pindah Halaman & Refresh Sesi secara Bersih
       window.location.href = "/dashboard";
     } catch (err) {
       setError(
-        err.response?.data?.error || "Login gagal, periksa email & password"
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "Login gagal, periksa email & password"
       );
     } finally {
       setLoading(false);
