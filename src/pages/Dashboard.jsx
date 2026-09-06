@@ -19,7 +19,7 @@ export default function Dashboard() {
       }
     }
 
-    // 2. Fetch Data Dashboard secara Independen (Tahan Error 500)
+    // 2. Fetch Data Dashboard secara Independen
     const fetchDashboardData = async () => {
       setLoading(true);
 
@@ -35,9 +35,9 @@ export default function Dashboard() {
         console.error("Gagal memuat data dompet di dashboard:", err);
       }
 
-      // Fetch Transaksi Terakhir
+      // Fetch Semua Transaksi (untuk kalkulasi bulan ini & 5 transaksi terakhir)
       try {
-        const txRes = await API.get("/transactions?page=1&limit=5");
+        const txRes = await API.get("/transactions?page=1&limit=100");
         const fetchedTx =
           txRes.data?.data ||
           txRes.data?.transactions ||
@@ -53,26 +53,43 @@ export default function Dashboard() {
     fetchDashboardData();
   }, []);
 
-  // Hitung Total Saldo Keseluruhan
+  // Hitung Total Saldo Keseluruhan Dompet
   const totalBalance = wallets.reduce(
     (acc, curr) => acc + (parseFloat(curr.balance) || 0),
     0
   );
 
-  // Hitung Total Pemasukan & Pengeluaran dari List Transaksi Terbaca
-  const totalIncome = transactions
+  // Filter Transaksi Khusus Bulan & Tahun Berjalan
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const currentMonthTransactions = transactions.filter((t) => {
+    const rawDate = t.created_at || t.date;
+    if (!rawDate) return false;
+    const txDate = new Date(rawDate);
+    return (
+      txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear
+    );
+  });
+
+  // Hitung Total Pemasukan & Pengeluaran BULAN INI
+  const totalIncome = currentMonthTransactions
     .filter((t) => t.type === "income")
     .reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
 
-  const totalExpense = transactions
+  const totalExpense = currentMonthTransactions
     .filter((t) => t.type === "expense")
     .reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
 
-  // Kalkulasi Savings Rate Sederhana
+  // Kalkulasi Savings Rate Bulan Ini
   const savingsRate =
     totalIncome > 0
       ? Math.max(0, Math.round(((totalIncome - totalExpense) / totalIncome) * 100))
       : 0;
+
+  // 5 Transaksi Paling Terakhir
+  const recentTransactions = transactions.slice(0, 5);
 
   // Nama User Dinamis
   const displayName =
@@ -118,20 +135,20 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Pemasukan */}
+        {/* Pemasukan Bulan Ini */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
           <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider">
-            Pemasukan
+            Pemasukan (Bulan Ini)
           </p>
           <p className="text-xl font-black text-green-600 dark:text-green-400 mt-1">
             + Rp {totalIncome.toLocaleString("id-ID")}
           </p>
         </div>
 
-        {/* Pengeluaran */}
+        {/* Pengeluaran Bulan Ini */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
           <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider">
-            Pengeluaran
+            Pengeluaran (Bulan Ini)
           </p>
           <p className="text-xl font-black text-red-600 dark:text-red-400 mt-1">
             - Rp {totalExpense.toLocaleString("id-ID")}
@@ -178,8 +195,8 @@ export default function Dashboard() {
             <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
               {loading
                 ? "Memuat data dari server..."
-                : transactions.length > 0
-                ? "Data mutasi transaksi berhasil disinkronkan."
+                : currentMonthTransactions.length > 0
+                ? `${currentMonthTransactions.length} transaksi tercatat di bulan ini.`
                 : "Belum ada transaksi tercatat bulan ini."}
             </p>
           </div>
@@ -204,12 +221,12 @@ export default function Dashboard() {
         </div>
 
         <div className="divide-y divide-gray-100 dark:divide-slate-800">
-          {transactions.length === 0 ? (
+          {recentTransactions.length === 0 ? (
             <p className="text-gray-400 dark:text-gray-500 text-center py-8 text-xs">
               Belum ada transaksi tercatat.
             </p>
           ) : (
-            transactions.map((t) => {
+            recentTransactions.map((t) => {
               const isIncome = t.type === "income";
               return (
                 <div key={t.id} className="py-3 flex justify-between items-center">
