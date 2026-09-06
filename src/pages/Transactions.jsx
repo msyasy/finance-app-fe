@@ -24,7 +24,7 @@ export default function Transactions() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  // Options Tahun Dinamis
+  // Options Tahun
   const startYear = 2026;
   const currentYearNum = new Date().getFullYear();
   const yearOptions = Array.from(
@@ -49,15 +49,21 @@ export default function Transactions() {
     onConfirm: () => {},
   });
 
-  const fetchData = async () => {
-    // 1. Fetch Wallets & Categories
+  // 1. Fetch Wallets & Categories
+  const fetchMasterData = async () => {
     try {
       const [walletRes, catRes] = await Promise.all([
         API.get("/wallets"),
         API.get("/categories"),
       ]);
-      const fetchedWallets = walletRes.data.data || [];
-      const fetchedCategories = catRes.data.data || [];
+
+      const fetchedWallets = Array.isArray(walletRes.data)
+        ? walletRes.data
+        : walletRes.data?.data || [];
+
+      const fetchedCategories = Array.isArray(catRes.data)
+        ? catRes.data
+        : catRes.data?.data || [];
 
       setWallets(fetchedWallets);
       setCategories(fetchedCategories);
@@ -65,15 +71,13 @@ export default function Transactions() {
       if (fetchedWallets.length > 0 && !walletId) {
         setWalletId(fetchedWallets[0].id);
       }
-      if (fetchedCategories.length > 0 && !categoryId) {
-        const defaultCat = fetchedCategories.find((c) => c.type === type);
-        if (defaultCat) setCategoryId(defaultCat.id);
-      }
     } catch (err) {
       console.error("Gagal memuat master data", err);
     }
+  };
 
-    // 2. Fetch Transactions
+  // 2. Fetch Transactions
+  const fetchTransactions = async () => {
     try {
       let url = `/transactions?page=${page}&limit=10`;
       if (startDate && endDate) {
@@ -86,8 +90,13 @@ export default function Transactions() {
       }
 
       const txRes = await API.get(url);
-      setTransactions(txRes.data.data || []);
-      if (txRes.data.pagination) {
+      const fetchedTx = Array.isArray(txRes.data)
+        ? txRes.data
+        : txRes.data?.data || [];
+
+      setTransactions(fetchedTx);
+
+      if (txRes.data?.pagination) {
         setPaginationMeta({
           currentPage: txRes.data.pagination.current_page || 1,
           limit: txRes.data.pagination.limit || 10,
@@ -101,24 +110,30 @@ export default function Transactions() {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchMasterData();
+  }, []);
+
+  useEffect(() => {
+    fetchTransactions();
   }, [page, startDate, endDate, selectedMonth, selectedYear]);
 
-  // Formatter & Handlers
+  // Otomatis update opsi kategori saat tipe transaksi berubah
+  useEffect(() => {
+    const availableCats = categories.filter((c) => c.type === type);
+    if (availableCats.length > 0) {
+      if (!availableCats.some((c) => c.id === Number(categoryId))) {
+        setCategoryId(availableCats[0].id);
+      }
+    } else {
+      setCategoryId("");
+    }
+  }, [type, categories]);
+
+  // Formatters
   const formatAmountInput = (value) => {
     const rawValue = value.replace(/\D/g, "");
     if (!rawValue) return "";
     return new Intl.NumberFormat("id-ID").format(rawValue);
-  };
-
-  const handleTypeChange = (newType) => {
-    setType(newType);
-    const availableCats = categories.filter((c) => c.type === newType);
-    if (availableCats.length > 0) {
-      setCategoryId(availableCats[0].id);
-    } else {
-      setCategoryId("");
-    }
   };
 
   const handleAddTransaction = async (e) => {
@@ -142,7 +157,7 @@ export default function Transactions() {
       toast.success("Transaksi berhasil dicatat!");
       setAmount("");
       setNotes("");
-      fetchData();
+      fetchTransactions();
     } catch (err) {
       toast.error(err.response?.data?.error || "Gagal mencatat transaksi");
     }
@@ -157,7 +172,7 @@ export default function Transactions() {
         try {
           await API.delete(`/transactions/${id}`);
           toast.success("Transaksi berhasil dihapus");
-          fetchData();
+          fetchTransactions();
         } catch {
           toast.error("Gagal menghapus transaksi");
         }
@@ -195,8 +210,8 @@ export default function Transactions() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Halaman (Tanpa Tombol Toggle Batal/Tambah lagi) */}
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Header Halaman */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
           Kelola Transaksi
@@ -206,12 +221,13 @@ export default function Transactions() {
         </p>
       </div>
 
-      {/* Form Tambah Transaksi (Langsung Tampil Permanent) */}
+      {/* Form Tambah Transaksi */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors space-y-4">
         <h3 className="text-base font-bold text-gray-800 dark:text-white">
           Form Transaksi Baru
         </h3>
         <form onSubmit={handleAddTransaction} className="grid grid-cols-1 md:grid-cols-6 gap-3">
+          {/* Select Dompet */}
           <select
             value={walletId}
             onChange={(e) => setWalletId(e.target.value)}
@@ -219,7 +235,7 @@ export default function Transactions() {
             required
           >
             {wallets.length === 0 ? (
-              <option value="">Buat dompet dulu</option>
+              <option value="">Belum ada dompet</option>
             ) : (
               wallets.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -229,15 +245,17 @@ export default function Transactions() {
             )}
           </select>
 
+          {/* Select Tipe Transaksi */}
           <select
             value={type}
-            onChange={(e) => handleTypeChange(e.target.value)}
+            onChange={(e) => setType(e.target.value)}
             className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="expense">Pengeluaran (-)</option>
             <option value="income">Pemasukan (+)</option>
           </select>
 
+          {/* Select Kategori */}
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
@@ -245,7 +263,7 @@ export default function Transactions() {
             required
           >
             {filteredCategories.length === 0 ? (
-              <option value="">Tambah kategori dulu</option>
+              <option value="">Belum ada kategori</option>
             ) : (
               filteredCategories.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -255,6 +273,7 @@ export default function Transactions() {
             )}
           </select>
 
+          {/* Input Nominal */}
           <input
             type="text"
             placeholder="Jumlah (Rp)"
@@ -264,6 +283,7 @@ export default function Transactions() {
             className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
           />
 
+          {/* Input Catatan */}
           <input
             type="text"
             placeholder="Catatan / Keterangan"
@@ -273,6 +293,7 @@ export default function Transactions() {
             className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
           />
 
+          {/* Submit Button */}
           <button
             type="submit"
             className="bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl p-2.5 text-xs transition cursor-pointer"
