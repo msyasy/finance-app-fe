@@ -49,30 +49,35 @@ export default function Transactions() {
     onConfirm: () => {},
   });
 
-  // 1. Fetch Wallets & Categories
+  // 1. Fetch Wallets & Categories (Independen)
   const fetchMasterData = async () => {
+    // Fetch Dompet
     try {
-      const [walletRes, catRes] = await Promise.all([
-        API.get("/wallets"),
-        API.get("/categories"),
-      ]);
-
-      const fetchedWallets = Array.isArray(walletRes.data)
-        ? walletRes.data
-        : walletRes.data?.data || [];
-
-      const fetchedCategories = Array.isArray(catRes.data)
-        ? catRes.data
-        : catRes.data?.data || [];
+      const walletRes = await API.get("/wallets");
+      const fetchedWallets =
+        walletRes.data?.data ||
+        walletRes.data?.wallets ||
+        (Array.isArray(walletRes.data) ? walletRes.data : []);
 
       setWallets(fetchedWallets);
-      setCategories(fetchedCategories);
-
-      if (fetchedWallets.length > 0 && !walletId) {
-        setWalletId(fetchedWallets[0].id);
+      if (fetchedWallets.length > 0) {
+        setWalletId((prev) => prev || fetchedWallets[0].id);
       }
     } catch (err) {
-      console.error("Gagal memuat master data", err);
+      console.error("Gagal memuat data dompet:", err);
+    }
+
+    // Fetch Kategori
+    try {
+      const catRes = await API.get("/categories");
+      const fetchedCategories =
+        catRes.data?.data ||
+        catRes.data?.categories ||
+        (Array.isArray(catRes.data) ? catRes.data : []);
+
+      setCategories(fetchedCategories);
+    } catch (err) {
+      console.error("Gagal memuat data kategori:", err);
     }
   };
 
@@ -90,9 +95,10 @@ export default function Transactions() {
       }
 
       const txRes = await API.get(url);
-      const fetchedTx = Array.isArray(txRes.data)
-        ? txRes.data
-        : txRes.data?.data || [];
+      const fetchedTx =
+        txRes.data?.data ||
+        txRes.data?.transactions ||
+        (Array.isArray(txRes.data) ? txRes.data : []);
 
       setTransactions(fetchedTx);
 
@@ -117,11 +123,13 @@ export default function Transactions() {
     fetchTransactions();
   }, [page, startDate, endDate, selectedMonth, selectedYear]);
 
-  // Otomatis update opsi kategori saat tipe transaksi berubah
+  // Otomatis sinkronkan kategori saat tipe transaksi (income/expense) berubah
   useEffect(() => {
-    const availableCats = categories.filter((c) => c.type === type);
+    const availableCats = categories.filter(
+      (c) => c.type?.toLowerCase() === type.toLowerCase()
+    );
     if (availableCats.length > 0) {
-      if (!availableCats.some((c) => c.id === Number(categoryId))) {
+      if (!availableCats.some((c) => Number(c.id) === Number(categoryId))) {
         setCategoryId(availableCats[0].id);
       }
     } else {
@@ -180,11 +188,15 @@ export default function Transactions() {
     });
   };
 
-  const filteredCategories = categories.filter((c) => c.type === type);
+  const filteredCategories = categories.filter(
+    (c) => c.type?.toLowerCase() === type.toLowerCase()
+  );
 
   const filteredTransactions = transactions.filter((t) => {
     const categoryName =
-      t.category?.name || categories.find((c) => c.id === t.category_id)?.name || "";
+      t.category?.name ||
+      categories.find((c) => Number(c.id) === Number(t.category_id))?.name ||
+      "";
     const searchLower = searchQuery.toLowerCase();
 
     const matchesSearch =
@@ -192,10 +204,12 @@ export default function Transactions() {
       categoryName.toLowerCase().includes(searchLower);
 
     const matchesWallet =
-      selectedWalletFilter === "all" || t.wallet_id === Number(selectedWalletFilter);
+      selectedWalletFilter === "all" ||
+      Number(t.wallet_id) === Number(selectedWalletFilter);
 
     const matchesCategory =
-      selectedCategoryFilter === "all" || t.category_id === Number(selectedCategoryFilter);
+      selectedCategoryFilter === "all" ||
+      Number(t.category_id) === Number(selectedCategoryFilter);
 
     return matchesSearch && matchesWallet && matchesCategory;
   });
@@ -432,11 +446,11 @@ export default function Transactions() {
               const isIncome = t.type === "income";
               const walletName =
                 t.wallet?.name ||
-                wallets.find((w) => w.id === t.wallet_id)?.name ||
+                wallets.find((w) => Number(w.id) === Number(t.wallet_id))?.name ||
                 "Dompet";
               const categoryName =
                 t.category?.name ||
-                categories.find((c) => c.id === t.category_id)?.name;
+                categories.find((c) => Number(c.id) === Number(t.category_id))?.name;
 
               return (
                 <div key={t.id} className="py-3.5 flex justify-between items-center">
