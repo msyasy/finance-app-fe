@@ -5,24 +5,44 @@ import API from "../services/api";
 export default function Budgets() {
   const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]);
-  const [editingId, setEditingId] = useState(null);
-  const [inputBudget, setInputBudget] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
+  // Form state
+  const [categoryId, setCategoryId] = useState("");
+  const [budgetLimit, setBudgetLimit] = useState("");
 
   const fetchData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
+      // Fetch kategori & transaksi bulan ini untuk kalkulasi pemakaian
       const [catRes, txRes] = await Promise.all([
         API.get("/categories"),
-        API.get(`/transactions?page=1&limit=1000`),
+        API.get("/transactions?page=1&limit=100"),
       ]);
 
-      setCategories(catRes.data.data || []);
-      setTransactions(txRes.data.data || []);
-    } catch {
+      const fetchedCategories =
+        catRes.data?.data ||
+        catRes.data?.categories ||
+        (Array.isArray(catRes.data) ? catRes.data : []);
+
+      const fetchedTx =
+        txRes.data?.data ||
+        txRes.data?.transactions ||
+        (Array.isArray(txRes.data) ? txRes.data : []);
+
+      // Filter hanya kategori pengeluaran untuk budget
+      const expenseCats = fetchedCategories.filter(
+        (c) => c.type?.toLowerCase() === "expense"
+      );
+
+      setCategories(expenseCats);
+      setTransactions(fetchedTx);
+
+      if (expenseCats.length > 0 && !categoryId) {
+        setCategoryId(expenseCats[0].id);
+      }
+    } catch (err) {
+      console.error("Gagal memuat data budget:", err);
       toast.error("Gagal memuat data anggaran");
     } finally {
       setLoading(false);
@@ -33,178 +53,161 @@ export default function Budgets() {
     fetchData();
   }, []);
 
-  const expenseCategories = categories.filter((c) => c.type === "expense");
+  const formatAmountInput = (value) => {
+    const rawValue = value.replace(/\D/g, "");
+    if (!rawValue) return "";
+    return new Intl.NumberFormat("id-ID").format(rawValue);
+  };
 
-  // Kalkulasi total pengeluaran bulan ini per kategori
-  const expenseMap = {};
-  transactions.forEach((t) => {
-    const d = new Date(t.created_at || t.date || Date.now());
-    if (
-      t.type === "expense" &&
-      d.getMonth() === currentMonth &&
-      d.getFullYear() === currentYear
-    ) {
-      expenseMap[t.category_id] =
-        (expenseMap[t.category_id] || 0) + parseFloat(t.amount || 0);
-    }
-  });
+  const handleSaveBudget = async (e) => {
+    e.preventDefault();
+    if (!categoryId) return toast.error("Pilih kategori terlebih dahulu");
 
-  const handleSaveBudget = async (catId) => {
-    const cleanAmount = parseFloat(inputBudget.replace(/\./g, ""));
-    if (isNaN(cleanAmount) || cleanAmount < 0) {
-      return toast.error("Masukkan nominal anggaran yang valid");
+    const cleanLimit = parseFloat(budgetLimit.replace(/\./g, ""));
+    if (isNaN(cleanLimit) || cleanLimit < 0) {
+      return toast.error("Masukkan nominal limit yang valid");
     }
 
     try {
-      await API.put(`/categories/${catId}/budget`, {
-        budget_limit: cleanAmount,
+      // Endpoint update budget limit kategori
+      await API.put(`/categories/${categoryId}/budget`, {
+        budget_limit: cleanLimit,
       });
+
       toast.success("Batas anggaran berhasil diperbarui!");
-      setEditingId(null);
-      setInputBudget("");
+      setBudgetLimit("");
       fetchData();
-    } catch {
-      toast.error("Gagal menyimpan anggaran");
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Gagal menyimpan batas anggaran");
     }
   };
 
-  const formatRupiah = (num) =>
-    new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    }).format(num || 0);
+  // Filter transaksi bulan ini
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const currentMonthTx = transactions.filter((t) => {
+    const rawDate = t.created_at || t.date;
+    if (!rawDate) return false;
+    const txDate = new Date(rawDate);
+    return (
+      txDate.getMonth() === currentMonth &&
+      txDate.getFullYear() === currentYear &&
+      t.type === "expense"
+    );
+  });
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header Halaman */}
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Header */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-          Budget Planner
+          Budget Planner (Perencanaan Anggaran)
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Atur dan pantau batas pengeluaran bulanan per kategori
+          Kontrol batas pengeluaran bulanan agar keuangan tetap sehat
         </p>
       </div>
 
-      {/* Konten Utama */}
-      <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors space-y-6">
+      {/* Form Atur Budget */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors space-y-4">
         <h3 className="text-base font-bold text-gray-800 dark:text-white">
-          Pengawasan Anggaran Kategori
+          Atur Batas Anggaran Kategori
+        </h3>
+        <form onSubmit={handleSaveBudget} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+            required
+          >
+            {categories.length === 0 ? (
+              <option value="">Belum ada kategori pengeluaran</option>
+            ) : (
+              categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))
+            )}
+          </select>
+
+          <input
+            type="text"
+            placeholder="Batas Limit Bulanan (Rp)"
+            required
+            value={budgetLimit}
+            onChange={(e) => setBudgetLimit(formatAmountInput(e.target.value))}
+            className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+
+          <button
+            type="submit"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl p-2.5 text-xs transition cursor-pointer"
+          >
+            Simpan Anggaran
+          </button>
+        </form>
+      </div>
+
+      {/* Daftar Monitoring Anggaran */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 space-y-4">
+        <h3 className="text-base font-bold text-gray-800 dark:text-white">
+          Monitoring Pengeluaran Bulan Ini
         </h3>
 
         {loading ? (
-          <div className="text-center py-8 text-xs text-gray-400 dark:text-gray-500">
-            Memuat data anggaran...
-          </div>
-        ) : expenseCategories.length === 0 ? (
-          <div className="text-center py-8 text-sm text-gray-400 dark:text-gray-500 italic">
-            Belum ada kategori pengeluaran. Buat kategori terlebih dahulu di menu Kategori.
-          </div>
+          <p className="text-gray-400 text-center py-8 text-xs">Memuat data anggaran...</p>
+        ) : categories.length === 0 ? (
+          <p className="text-gray-400 text-center py-8 text-xs">Belum ada kategori pengeluaran.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {expenseCategories.map((cat) => {
-              const spent = expenseMap[cat.id] || 0;
-              const limit = parseFloat(cat.budget_limit || 0);
-              const percentage =
-                limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
+            {categories.map((cat) => {
+              // Hitung total pengeluaran untuk kategori ini di bulan berjalan
+              const spent = currentMonthTx
+                .filter((t) => Number(t.category_id) === Number(cat.id))
+                .reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
 
-              let barColor = "bg-emerald-500";
-              let textColor = "text-emerald-600 dark:text-emerald-400";
-              if (limit > 0) {
-                if (spent >= limit || percentage >= 90) {
-                  barColor = "bg-rose-500";
-                  textColor = "text-rose-600 dark:text-rose-400 font-bold";
-                } else if (percentage >= 75) {
-                  barColor = "bg-amber-500";
-                  textColor = "text-amber-600 dark:text-amber-400";
-                }
-              }
+              const limit = parseFloat(cat.budget_limit || 0);
+              const percentage = limit > 0 ? Math.min(Math.round((spent / limit) * 100), 100) : 0;
+              const isOver = limit > 0 && spent > limit;
 
               return (
                 <div
                   key={cat.id}
-                  className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 space-y-3"
+                  className="p-4 rounded-2xl border border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 space-y-3"
                 >
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold text-gray-800 dark:text-gray-200 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-sm text-gray-800 dark:text-white">
                       {cat.name}
                     </span>
-
-                    {editingId === cat.id ? (
-                      <div className="flex gap-1.5 items-center">
-                        <input
-                          type="text"
-                          placeholder="Limit Rp"
-                          value={inputBudget}
-                          onChange={(e) =>
-                            setInputBudget(
-                              e.target.value
-                                .replace(/\D/g, "")
-                                .replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-                            )
-                          }
-                          className="w-28 p-1.5 border border-gray-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 outline-none"
-                        />
-                        <button
-                          onClick={() => handleSaveBudget(cat.id)}
-                          className="bg-blue-600 text-white px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer"
-                        >
-                          Simpan
-                        </button>
-                        <button
-                          onClick={() => setEditingId(null)}
-                          className="bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-lg text-xs cursor-pointer"
-                        >
-                          Batal
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setEditingId(cat.id);
-                          setInputBudget(limit ? limit.toString() : "");
-                        }}
-                        className="text-blue-600 dark:text-blue-400 hover:underline font-semibold text-xs cursor-pointer"
-                      >
-                        {limit > 0 ? "Edit Limit" : "+ Set Limit"}
-                      </button>
-                    )}
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Limit: Rp {limit.toLocaleString("id-ID")}
+                    </span>
                   </div>
 
-                  <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-                    <span>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-600 dark:text-gray-300">
                       Terpakai:{" "}
-                      <strong className={textColor}>{formatRupiah(spent)}</strong>
-                    </span>
-                    <span>
-                      Limit:{" "}
-                      <strong className="text-gray-700 dark:text-gray-300">
-                        {limit > 0 ? formatRupiah(limit) : "Belum diatur"}
+                      <strong className={isOver ? "text-red-500 font-bold" : "text-gray-800 dark:text-gray-100"}>
+                        Rp {spent.toLocaleString("id-ID")}
                       </strong>
                     </span>
+                    <span className={`font-bold ${isOver ? "text-red-500" : "text-blue-600"}`}>
+                      {percentage}%
+                    </span>
                   </div>
 
-                  {limit > 0 ? (
-                    <div className="space-y-1">
-                      <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
-                        <div
-                          className={`h-2.5 rounded-full transition-all duration-300 ${barColor}`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-[10px] text-gray-400 dark:text-gray-500">
-                        <span>Penggunaan: {percentage.toFixed(0)}%</span>
-                        {spent >= limit && (
-                          <span className="text-rose-500 font-bold">Over Budget!</span>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-gray-400 dark:text-gray-500 italic">
-                      Batas anggaran belum diatur untuk kategori ini.
-                    </p>
-                  )}
+                  {/* Progress Bar */}
+                  <div className="w-full bg-gray-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        isOver ? "bg-red-500" : percentage > 80 ? "bg-amber-500" : "bg-blue-600"
+                      }`}
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
                 </div>
               );
             })}
