@@ -9,17 +9,32 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Ambil data user dari LocalStorage
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Gagal membaca data user dari storage", e);
+    // 1. Ambil & Validasi Data User dari LocalStorage / Backend Profile
+    const fetchUserData = async () => {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          setUser(parsed);
+        } catch (e) {
+          console.error("Gagal parse user storage", e);
+        }
       }
-    }
 
-    // 2. Fetch Data Dashboard secara Independen
+      // Coba fetch data profil terbaru dari backend untuk memastikan nama lengkap terbawa
+      try {
+        const res = await API.get("/me"); // Endpoint profil user
+        const profileData = res.data?.data || res.data;
+        if (profileData) {
+          setUser(profileData);
+          localStorage.setItem("user", JSON.stringify(profileData));
+        }
+      } catch {
+        // Abaikan jika endpoint profil tidak tersedia, gunakan yang ada di storage
+      }
+    };
+
+    // 2. Fetch Data Dashboard (Dompet & Transaksi)
     const fetchDashboardData = async () => {
       setLoading(true);
 
@@ -35,7 +50,7 @@ export default function Dashboard() {
         console.error("Gagal memuat data dompet di dashboard:", err);
       }
 
-      // Fetch Semua Transaksi (untuk kalkulasi bulan ini & 5 transaksi terakhir)
+      // Fetch Transaksi
       try {
         const txRes = await API.get("/transactions?page=1&limit=100");
         const fetchedTx =
@@ -50,13 +65,14 @@ export default function Dashboard() {
       }
     };
 
+    fetchUserData();
     fetchDashboardData();
   }, []);
 
   // Hitung Total Saldo Keseluruhan Dompet
   const totalBalance = wallets.reduce(
     (acc, curr) => acc + (parseFloat(curr.balance) || 0),
-    0
+    0,
   );
 
   // Filter Transaksi Khusus Bulan & Tahun Berjalan
@@ -85,18 +101,18 @@ export default function Dashboard() {
   // Kalkulasi Savings Rate Bulan Ini
   const savingsRate =
     totalIncome > 0
-      ? Math.max(0, Math.round(((totalIncome - totalExpense) / totalIncome) * 100))
+      ? Math.max(
+          0,
+          Math.round(((totalIncome - totalExpense) / totalIncome) * 100),
+        )
       : 0;
 
   // 5 Transaksi Paling Terakhir
   const recentTransactions = transactions.slice(0, 5);
 
-  // Nama User Dinamis
+  // Prioritaskan Nama Lengkap (name, full_name, nama) dibanding pecahan email
   const displayName =
-    user?.name ||
-    user?.full_name ||
-    user?.username ||
-    (user?.email ? user.email.split("@")[0] : "Pengguna");
+    user?.name || user?.full_name || user?.nama || user?.username || "Pengguna";
 
   const formatDate = (dateString) => {
     if (!dateString) return "-";
@@ -196,8 +212,8 @@ export default function Dashboard() {
               {loading
                 ? "Memuat data dari server..."
                 : currentMonthTransactions.length > 0
-                ? `${currentMonthTransactions.length} transaksi tercatat di bulan ini.`
-                : "Belum ada transaksi tercatat bulan ini."}
+                  ? `${currentMonthTransactions.length} transaksi tercatat di bulan ini.`
+                  : "Belum ada transaksi tercatat bulan ini."}
             </p>
           </div>
         </div>
@@ -210,7 +226,9 @@ export default function Dashboard() {
             <h3 className="text-base font-bold text-gray-800 dark:text-white">
               5 Transaksi Terakhir
             </h3>
-            <p className="text-xs text-gray-400">Aktivitas mutasi dana terbaru</p>
+            <p className="text-xs text-gray-400">
+              Aktivitas mutasi dana terbaru
+            </p>
           </div>
           <Link
             to="/transactions"
@@ -229,7 +247,10 @@ export default function Dashboard() {
             recentTransactions.map((t) => {
               const isIncome = t.type === "income";
               return (
-                <div key={t.id} className="py-3 flex justify-between items-center">
+                <div
+                  key={t.id}
+                  className="py-3 flex justify-between items-center"
+                >
                   <div>
                     <p className="font-semibold text-gray-800 dark:text-gray-100 text-xs">
                       {t.notes || "Transaksi"}
