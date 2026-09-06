@@ -15,6 +15,8 @@ import ConfirmModal from "../components/ConfirmModal";
 import TransferModal from "../components/TransferModal";
 import BudgetProgressCard from "../components/BudgetProgressCard";
 import CashFlowChart from "../components/CashFlowChart";
+import FinancialInsightCard from "../components/FinancialInsightCard";
+import DarkModeToggle from "../components/DarkModeToggle";
 
 // Warna Palet untuk Grafik Pengeluaran
 const CHART_COLORS = [
@@ -50,11 +52,11 @@ export default function Dashboard() {
   const [selectedWalletFilter, setSelectedWalletFilter] = useState("all");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
 
-  // State Filter Bulan & Tahun (Default ke Bulan & Tahun Saat Ini)
+  // State Filter Bulan & Tahun
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // Generasi Pilihan Tahun Dinamis (Mulai dari 2026 sampai Tahun Depan)
+  // Generasi Pilihan Tahun Dinamis
   const startYear = 2026;
   const currentYearNum = new Date().getFullYear();
   const yearOptions = Array.from(
@@ -115,7 +117,7 @@ export default function Dashboard() {
       setWallets([]);
     }
 
-    // Fetch Transaksi dengan Pagination & Filter Tanggal/Bulan/Tahun
+    // Fetch Transaksi dengan Pagination & Filter
     try {
       let url = `/transactions?page=${page}&limit=10`;
       if (startDate && endDate) {
@@ -165,10 +167,9 @@ export default function Dashboard() {
     fetchData();
   }, [page, startDate, endDate, selectedMonth, selectedYear]);
 
-  // Handler khusus untuk menarik SEMUA data transaksi periode aktif saat ekspor
   const handleExport = async (exportType) => {
     try {
-      let url = `/transactions?page=1&limit=10000`; // Tanpa batas pagination
+      let url = `/transactions?page=1&limit=10000`;
       if (startDate && endDate) {
         url += `&start_date=${startDate}&end_date=${endDate}`;
       } else if (selectedMonth && selectedYear) {
@@ -182,7 +183,6 @@ export default function Dashboard() {
       const res = await API.get(url);
       let allData = res.data.data || [];
 
-      // Filter data lokal sesuai pencarian, dompet, & kategori yang sedang dipilih
       allData = allData.filter((t) => {
         const categoryName =
           t.category?.name ||
@@ -224,7 +224,7 @@ export default function Dashboard() {
   };
 
   // ==========================================
-  // 3. EVENT HANDLERS (DOMPET, KATEGORI, TRANSAKSI)
+  // 3. EVENT HANDLERS
   // ==========================================
   const handleTypeChange = (newType) => {
     setType(newType);
@@ -388,7 +388,16 @@ export default function Dashboard() {
     .filter((t) => t.type === "expense")
     .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
 
-  // Kalkulasi data untuk Grafik Donut Pengeluaran
+  // Kalkulasi Pembanding Insight
+  const lastMonthData = cashFlowData[currentMonth - 1];
+  const lastMonthExpense = lastMonthData ? parseFloat(lastMonthData.expense || 0) : 0;
+
+  const last3MonthsData = cashFlowData.slice(Math.max(0, currentMonth - 3), currentMonth);
+  const avgThreeMonthsExpense = last3MonthsData.length > 0
+    ? last3MonthsData.reduce((acc, curr) => acc + parseFloat(curr.expense || 0), 0) / last3MonthsData.length
+    : 0;
+
+  // Donut Chart Data
   const chartDataMap = {};
   thisMonthTransactions
     .filter((t) => t.type === "expense")
@@ -404,7 +413,6 @@ export default function Dashboard() {
     value: chartDataMap[key],
   }));
 
-  // Filter Transaksi Berdasarkan Pencarian, Dompet, dan Kategori
   const filteredTransactions = transactions.filter((t) => {
     const categoryName =
       t.category?.name ||
@@ -431,84 +439,91 @@ export default function Dashboard() {
   // 5. TAMPILAN DASHBOARD (JSX)
   // ==========================================
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 p-6 transition-colors duration-300">
       <div className="max-w-5xl mx-auto space-y-6">
         {/* BAGIAN 5.1: HEADER DASHBOARD */}
-        <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors duration-300">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
               Dashboard Keuangan
             </h1>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Kelola dompet, kategori, dan transaksi kamu
             </p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition cursor-pointer"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <DarkModeToggle />
+            <button
+              onClick={handleLogout}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition cursor-pointer"
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         {/* BAGIAN 5.2: CARD RINGKASAN SALDO & ARUS KAS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Total Saldo Utama */}
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors">
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Total Saldo Utama
               </p>
-              <h3 className="text-xl font-bold text-gray-900 mt-1">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mt-1">
                 {formatRupiah(totalBalance)}
               </h3>
             </div>
-            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold">
+            <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center font-bold">
               Rp
             </div>
           </div>
 
-          {/* Pemasukan Bulan Ini */}
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors">
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Pemasukan (Bulan Ini)
               </p>
-              <h3 className="text-xl font-bold text-green-600 mt-1">
+              <h3 className="text-xl font-bold text-green-600 dark:text-green-400 mt-1">
                 + {formatRupiah(totalIncome)}
               </h3>
             </div>
-            <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center font-bold">
+            <div className="w-10 h-10 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-xl flex items-center justify-center font-bold">
               ↑
             </div>
           </div>
 
-          {/* Pengeluaran Bulan Ini */}
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors">
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Pengeluaran (Bulan Ini)
               </p>
-              <h3 className="text-xl font-bold text-red-600 mt-1">
+              <h3 className="text-xl font-bold text-red-600 dark:text-red-400 mt-1">
                 - {formatRupiah(totalExpense)}
               </h3>
             </div>
-            <div className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center font-bold">
+            <div className="w-10 h-10 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl flex items-center justify-center font-bold">
               ↓
             </div>
           </div>
         </div>
 
+        {/* INSIGHT PINTAR */}
+        <FinancialInsightCard
+          income={totalIncome}
+          expense={totalExpense}
+          lastMonthExpense={lastMonthExpense}
+          avgThreeMonthsExpense={avgThreeMonthsExpense}
+        />
+
         {/* BAGIAN 5.3: KELOLA DOMPET & KATEGORI */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-          {/* Kelola Daftar Dompet */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 space-y-4 transition-colors">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-gray-800">Daftar Dompet</h3>
+              <h3 className="text-lg font-bold text-gray-800 dark:text-white">Daftar Dompet</h3>
               {wallets.length >= 2 && (
                 <button
                   onClick={() => setIsTransferOpen(true)}
-                  className="text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition cursor-pointer"
+                  className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-lg transition cursor-pointer"
                 >
                   ⇄ Transfer Saldo
                 </button>
@@ -522,7 +537,7 @@ export default function Dashboard() {
                 required
                 value={newWalletName}
                 onChange={(e) => setNewWalletName(e.target.value)}
-                className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none flex-1"
+                className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none flex-1"
               />
               <button
                 type="submit"
@@ -534,14 +549,14 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-56 overflow-y-auto pr-1">
               {wallets.length === 0 ? (
-                <p className="text-gray-400 text-sm italic col-span-2">
+                <p className="text-gray-400 dark:text-gray-500 text-sm italic col-span-2">
                   Belum ada dompet.
                 </p>
               ) : (
                 wallets.map((w) => (
                   <div
                     key={w.id}
-                    className="bg-slate-900 text-white p-3 rounded-xl shadow-sm flex justify-between items-center group hover:bg-slate-800 transition border border-slate-800"
+                    className="bg-slate-900 dark:bg-slate-800 text-white p-3 rounded-xl shadow-sm flex justify-between items-center group hover:bg-slate-800 dark:hover:bg-slate-700 transition border border-slate-800 dark:border-slate-700"
                   >
                     <div className="truncate pr-2">
                       <p className="text-slate-400 text-[10px] font-medium uppercase tracking-wider truncate">
@@ -577,9 +592,8 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Kelola Tambah Kategori */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
-            <h3 className="text-lg font-bold text-gray-800">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 space-y-4 transition-colors">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white">
               Tambah Kategori Baru
             </h3>
             <form
@@ -589,7 +603,7 @@ export default function Dashboard() {
               <select
                 value={newCategoryType}
                 onChange={(e) => setNewCategoryType(e.target.value)}
-                className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none bg-white font-semibold"
+                className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none font-semibold"
               >
                 <option value="expense">Pengeluaran (Expense)</option>
                 <option value="income">Pemasukan (Income)</option>
@@ -602,7 +616,7 @@ export default function Dashboard() {
                   required
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
-                  className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none flex-1"
+                  className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none flex-1"
                 />
                 <button
                   type="submit"
@@ -616,8 +630,8 @@ export default function Dashboard() {
         </div>
 
         {/* BAGIAN 5.4: FORM CATAT TRANSAKSI BARU */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4">
             Catat Transaksi Baru
           </h3>
           <form
@@ -627,7 +641,7 @@ export default function Dashboard() {
             <select
               value={walletId}
               onChange={(e) => setWalletId(e.target.value)}
-              className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               required
             >
               {wallets.length === 0 ? (
@@ -644,7 +658,7 @@ export default function Dashboard() {
             <select
               value={type}
               onChange={(e) => handleTypeChange(e.target.value)}
-              className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white font-semibold"
+              className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none font-semibold"
             >
               <option value="expense">Pengeluaran (-)</option>
               <option value="income">Pemasukan (+)</option>
@@ -653,7 +667,7 @@ export default function Dashboard() {
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               required
             >
               {filteredCategories.length === 0 ? (
@@ -673,7 +687,7 @@ export default function Dashboard() {
               required
               value={amount}
               onChange={(e) => setAmount(formatAmountInput(e.target.value))}
-              className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
 
             <input
@@ -682,7 +696,7 @@ export default function Dashboard() {
               required
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="p-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
 
             <button
@@ -697,7 +711,7 @@ export default function Dashboard() {
         {/* BAGIAN 5.5: GRAFIK TREN ARUS KAS BULANAN */}
         <CashFlowChart data={cashFlowData} />
 
-        {/* BAGIAN 5.6: BATAS ANGGARAN BULANAN (BUDGETING PROGRESS CARD) */}
+        {/* BAGIAN 5.6: BATAS ANGGARAN BULANAN */}
         <BudgetProgressCard
           categories={categories}
           transactions={transactions}
@@ -706,38 +720,36 @@ export default function Dashboard() {
 
         {/* BAGIAN 5.7: TABEL RIWAYAT TRANSAKSI & GRAFIK PENGELUARAN */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Tabel Riwayat Transaksi (2 Kolom Grid) */}
-          <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
-            {/* Header & Tombol Ekspor Data */}
+          {/* Tabel Riwayat Transaksi */}
+          <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 space-y-4 transition-colors">
             <div className="flex flex-wrap justify-between items-center gap-2">
-              <h3 className="text-lg font-bold text-gray-800">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-white">
                 Riwayat Transaksi
               </h3>
 
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-gray-400 font-medium">Ekspor:</span>
+                <span className="text-gray-400 dark:text-gray-500 font-medium">Ekspor:</span>
                 <button
                   onClick={() => handleExport("csv")}
-                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition cursor-pointer"
+                  className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-lg transition cursor-pointer"
                 >
                   📄 CSV
                 </button>
                 <button
                   onClick={() => handleExport("excel")}
-                  className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition cursor-pointer"
+                  className="px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-semibold rounded-lg transition cursor-pointer"
                 >
                   📊 Excel
                 </button>
                 <button
                   onClick={() => handleExport("pdf")}
-                  className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded-lg transition cursor-pointer"
+                  className="px-2.5 py-1.5 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 font-semibold rounded-lg transition cursor-pointer"
                 >
                   🔴 PDF
                 </button>
               </div>
             </div>
 
-            {/* Filter & Search Bar */}
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <input
@@ -745,13 +757,13 @@ export default function Dashboard() {
                   placeholder="Cari transaksi..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="p-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="p-2 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
                 />
 
                 <select
                   value={selectedWalletFilter}
                   onChange={(e) => setSelectedWalletFilter(e.target.value)}
-                  className="p-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                  className="p-2 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
                 >
                   <option value="all">Semua Dompet</option>
                   {wallets.map((w) => (
@@ -764,7 +776,7 @@ export default function Dashboard() {
                 <select
                   value={selectedCategoryFilter}
                   onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-                  className="p-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                  className="p-2 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
                 >
                   <option value="all">Semua Kategori</option>
                   {categories.map((c) => (
@@ -775,9 +787,7 @@ export default function Dashboard() {
                 </select>
               </div>
 
-              {/* Filter Periode (Bulan/Tahun Dinamis Merekam Mulai 2026) & Rentang Tanggal Manual */}
-              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-50 text-xs">
-                {/* Pilih Bulan */}
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-50 dark:border-slate-800 text-xs">
                 <select
                   value={selectedMonth}
                   onChange={(e) => {
@@ -785,7 +795,7 @@ export default function Dashboard() {
                     setPage(1);
                   }}
                   disabled={Boolean(startDate && endDate)}
-                  className="p-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 font-medium text-gray-700"
+                  className="p-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 dark:disabled:bg-slate-900 font-medium"
                 >
                   <option value={1}>Januari</option>
                   <option value={2}>Februari</option>
@@ -801,7 +811,6 @@ export default function Dashboard() {
                   <option value={12}>Desember</option>
                 </select>
 
-                {/* Pilih Tahun (Mulai dari 2026) */}
                 <select
                   value={selectedYear}
                   onChange={(e) => {
@@ -809,7 +818,7 @@ export default function Dashboard() {
                     setPage(1);
                   }}
                   disabled={Boolean(startDate && endDate)}
-                  className="p-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 font-medium text-gray-700"
+                  className="p-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 dark:disabled:bg-slate-900 font-medium"
                 >
                   {yearOptions.map((year) => (
                     <option key={year} value={year}>
@@ -818,9 +827,9 @@ export default function Dashboard() {
                   ))}
                 </select>
 
-                <span className="text-gray-300">|</span>
+                <span className="text-gray-300 dark:text-slate-700">|</span>
 
-                <span className="text-gray-400 font-medium">Manual:</span>
+                <span className="text-gray-400 dark:text-gray-500 font-medium">Manual:</span>
                 <input
                   type="date"
                   value={startDate}
@@ -828,9 +837,9 @@ export default function Dashboard() {
                     setStartDate(e.target.value);
                     setPage(1);
                   }}
-                  className="p-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700"
+                  className="p-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
-                <span className="text-gray-400">s/d</span>
+                <span className="text-gray-400 dark:text-gray-500">s/d</span>
                 <input
                   type="date"
                   value={endDate}
@@ -838,7 +847,7 @@ export default function Dashboard() {
                     setEndDate(e.target.value);
                     setPage(1);
                   }}
-                  className="p-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700"
+                  className="p-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
 
                 {(startDate || endDate) && (
@@ -848,7 +857,7 @@ export default function Dashboard() {
                       setEndDate("");
                       setPage(1);
                     }}
-                    className="text-red-500 hover:text-red-700 font-medium text-xs px-2 py-1 rounded-lg bg-red-50 transition cursor-pointer"
+                    className="text-red-500 dark:text-red-400 hover:text-red-700 font-medium text-xs px-2 py-1 rounded-lg bg-red-50 dark:bg-red-900/30 transition cursor-pointer"
                   >
                     Reset Tanggal
                   </button>
@@ -856,10 +865,9 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* List Transaksi */}
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 dark:divide-slate-800">
               {filteredTransactions.length === 0 ? (
-                <p className="text-gray-400 text-center py-6 text-sm">
+                <p className="text-gray-400 dark:text-gray-500 text-center py-6 text-sm">
                   {transactions.length === 0
                     ? "Belum ada transaksi pada periode ini."
                     : "Tidak ada data yang cocok."}
@@ -881,12 +889,12 @@ export default function Dashboard() {
                       className="py-3 flex justify-between items-center"
                     >
                       <div>
-                        <p className="font-semibold text-gray-800 text-sm">
+                        <p className="font-semibold text-gray-800 dark:text-gray-100 text-sm">
                           {t.notes} {categoryName ? `• ${categoryName}` : ""}
                         </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                           {formatDate(t.created_at || t.date)} •{" "}
-                          <span className="font-medium text-gray-500">
+                          <span className="font-medium text-gray-500 dark:text-gray-400">
                             {walletName}
                           </span>
                         </p>
@@ -894,7 +902,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-3">
                         <span
                           className={`font-bold text-sm ${
-                            isIncome ? "text-green-600" : "text-red-600"
+                            isIncome ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                           }`}
                         >
                           {isIncome ? "+" : "-"} Rp{" "}
@@ -902,7 +910,7 @@ export default function Dashboard() {
                         </span>
                         <button
                           onClick={() => handleDeleteTransaction(t.id)}
-                          className="text-red-400 hover:text-red-600 text-xs font-medium cursor-pointer"
+                          className="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-300 text-xs font-medium cursor-pointer"
                         >
                           Hapus
                         </button>
@@ -913,17 +921,16 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Pagination Controls */}
             {paginationMeta.totalPages > 1 && (
-              <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+              <div className="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-slate-800">
                 <button
                   onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
                   disabled={page === 1}
-                  className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition cursor-pointer"
+                  className="px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40 transition cursor-pointer"
                 >
                   &larr; Prev
                 </button>
-                <span className="text-xs text-gray-400 font-medium">
+                <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
                   {paginationMeta.currentPage} / {paginationMeta.totalPages}
                 </span>
                 <button
@@ -933,7 +940,7 @@ export default function Dashboard() {
                     )
                   }
                   disabled={page >= paginationMeta.totalPages}
-                  className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition cursor-pointer"
+                  className="px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40 transition cursor-pointer"
                 >
                   Next &rarr;
                 </button>
@@ -941,24 +948,23 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Card Grafik Pengeluaran (1 Kolom Grid) */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+          {/* Card Grafik Pengeluaran */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col justify-between transition-colors">
             <div>
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-800">
+                  <h3 className="text-lg font-bold text-gray-800 dark:text-white">
                     Pengeluaran Bulan Ini
                   </h3>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                     Analisis alokasi dana
                   </p>
                 </div>
-                <span className="text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-lg">
+                <span className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2.5 py-1 rounded-lg">
                   -{formatRupiah(totalExpense)}
                 </span>
               </div>
 
-              {/* Highlight Kategori Terbesar */}
               {chartData.length > 0 &&
                 (() => {
                   const topCategory = [...chartData].sort(
@@ -969,11 +975,11 @@ export default function Dashboard() {
                       ? ((topCategory.value / totalExpense) * 100).toFixed(0)
                       : 0;
                   return (
-                    <div className="bg-slate-50 p-3 rounded-xl mb-2 border border-slate-100 flex justify-between items-center text-xs">
-                      <span className="text-gray-500 font-medium">
+                    <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl mb-2 border border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
+                      <span className="text-gray-500 dark:text-gray-400 font-medium">
                         Pengeluaran Terbesar:
                       </span>
-                      <span className="font-bold text-slate-800">
+                      <span className="font-bold text-slate-800 dark:text-slate-100">
                         {topCategory.name} ({percentage}%)
                       </span>
                     </div>
@@ -981,9 +987,8 @@ export default function Dashboard() {
                 })()}
             </div>
 
-            {/* Recharts Donut Pie */}
             {chartData.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center text-gray-400 text-xs italic py-10">
+              <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500 text-xs italic py-10">
                 Belum ada pengeluaran bulan ini.
               </div>
             ) : (
@@ -1021,7 +1026,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* BAGIAN 5.8: MODAL DIALOGS (CONFIRM & TRANSFER) */}
+      {/* BAGIAN 5.8: MODAL DIALOGS */}
       <ConfirmModal
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}

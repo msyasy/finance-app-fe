@@ -18,12 +18,12 @@ export default function CashFlowChart({ data }) {
     }).format(value || 0);
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 space-y-4 transition-colors">
       <div>
-        <h3 className="text-lg font-bold text-gray-800">
+        <h3 className="text-lg font-bold text-gray-800 dark:text-white">
           Tren Arus Kas (6 Bulan Terakhir)
         </h3>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-gray-400 dark:text-gray-500">
           Perbandingan total Pemasukan vs Pengeluaran bulanan
         </p>
       </div>
@@ -37,13 +37,14 @@ export default function CashFlowChart({ data }) {
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
-              stroke="#F1F5F9"
+              stroke="#334155"
+              opacity={0.3}
             />
             <XAxis
               dataKey="month"
               tickLine={false}
               axisLine={false}
-              tick={{ fontSize: 12, fill: "#64748B" }}
+              tick={{ fontSize: 12, fill: "#94A3B8" }}
             />
             <YAxis
               tickLine={false}
@@ -63,10 +64,10 @@ export default function CashFlowChart({ data }) {
                 name === "income" ? "Pemasukan" : "Pengeluaran",
               ]}
               contentStyle={{
-                backgroundColor: "#1E293B",
+                backgroundColor: "#0f172a",
                 borderRadius: "12px",
                 color: "#FFF",
-                border: "none",
+                border: "1px solid #1e293b",
                 fontSize: "12px",
               }}
               itemStyle={{ color: "#FFF" }}
