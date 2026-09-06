@@ -12,7 +12,7 @@ export default function Dashboard() {
     // 1. Ambil Nama User Langsung dari Backend (/me atau /profile)
     const fetchUserProfile = async () => {
       try {
-        const res = await API.get("/me");
+        const res = await API.get("/name");
         const data = res.data?.data || res.data;
         const nameFromServer = data?.name || data?.full_name || data?.nama;
         if (nameFromServer) {
