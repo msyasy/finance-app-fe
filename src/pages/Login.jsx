@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import API from "../services/api";
 
 export default function Login() {
@@ -7,7 +7,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,20 +15,22 @@ export default function Login() {
 
     try {
       const response = await API.post("/login", { email, password });
-      
+      const resData = response.data?.data || response.data;
+
       // 1. Simpan Token
-      const token = response.data.token || response.data.data?.token;
+      const token = resData?.token || response.data?.token;
       if (token) {
         localStorage.setItem("token", token);
       }
 
-      // 2. Simpan Data User (agar nama di Dashboard berubah dinamis)
-      const userData = response.data.user || response.data.data?.user;
+      // 2. Simpan Data User (agar nama & profil di Dashboard terbaca dinamis)
+      const userData = resData?.user || response.data?.user;
       if (userData) {
         localStorage.setItem("user", JSON.stringify(userData));
       }
 
-      navigate("/dashboard");
+      // 3. Pindah Halaman & Refresh Sesi secara Bersih
+      window.location.href = "/dashboard";
     } catch (err) {
       setError(
         err.response?.data?.error || "Login gagal, periksa email & password"
