@@ -1,24 +1,21 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Wallet, 
   TrendingUp, 
   TrendingDown, 
   Percent, 
   Lightbulb, 
-  Plus, 
-  ArrowRightLeft,
-  Tag
+  Receipt,
+  ArrowRight
 } from "lucide-react";
 import API from "../services/api";
-import toast from "react-hot-toast";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [userName, setUserName] = useState("Pengguna");
   const [wallets, setWallets] = useState([]);
   const [transactions, setTransactions] = useState([]);
-  const [newWalletName, setNewWalletName] = useState("");
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [newCategoryType, setNewCategoryType] = useState("expense");
 
   const fetchData = async () => {
     try {
@@ -49,34 +46,6 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
-  // Tambah Dompet Baru
-  const handleAddWallet = async (e) => {
-    e.preventDefault();
-    if (!newWalletName.trim()) return;
-    try {
-      await API.post("/wallets", { name: newWalletName, balance: 0 });
-      toast.success("Dompet berhasil ditambahkan!");
-      setNewWalletName("");
-      fetchData();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal menambah dompet");
-    }
-  };
-
-  // Tambah Kategori Baru
-  const handleAddCategory = async (e) => {
-    e.preventDefault();
-    if (!newCategoryName.trim()) return;
-    try {
-      await API.post("/categories", { name: newCategoryName, type: newCategoryType });
-      toast.success("Kategori berhasil ditambahkan!");
-      setNewCategoryName("");
-      fetchData();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal menambah kategori");
-    }
-  };
-
   const totalBalance = wallets.reduce((acc, curr) => acc + (parseFloat(curr.balance) || 0), 0);
 
   const now = new Date();
@@ -97,6 +66,9 @@ export default function Dashboard() {
     .reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
 
   const savingsRate = totalIncome > 0 ? Math.max(0, Math.round(((totalIncome - totalExpense) / totalIncome) * 100)) : 0;
+
+  // Ambil 5 Transaksi Terakhir
+  const recentTransactions = transactions.slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -178,94 +150,69 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Grid: Daftar Dompet & Tambah Kategori */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Card Daftar Dompet */}
-        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                <Wallet size={18} className="text-blue-500" />
-                <span>Daftar Dompet</span>
-              </h3>
-            </div>
-
-            {/* Form Tambah Dompet */}
-            <form onSubmit={handleAddWallet} className="flex gap-2 mb-4">
-              <input
-                type="text"
-                placeholder="Nama Dompet (contoh: BCA / Cash)"
-                value={newWalletName}
-                onChange={(e) => setNewWalletName(e.target.value)}
-                className="flex-1 bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
-              />
-              <button
-                type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition flex items-center gap-1 shrink-0"
-              >
-                <Plus size={16} /> Dompet
-              </button>
-            </form>
-
-            {/* List Dompet dengan Slim Scrollbar */}
-            <div className="grid grid-cols-2 gap-3 max-h-[220px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
-              {wallets.length === 0 ? (
-                <p className="col-span-2 text-xs text-gray-400 py-4 text-center">Belum ada dompet.</p>
-              ) : (
-                wallets.map((w) => (
-                  <div key={w.id} className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800/80 p-3.5 rounded-xl">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{w.name}</p>
-                    <p className="text-sm font-extrabold text-gray-800 dark:text-white mt-1">
-                      Rp {(parseFloat(w.balance) || 0).toLocaleString("id-ID")}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+      {/* Section: 5 Transaksi Terakhir */}
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
+            <Receipt size={18} className="text-blue-500" />
+            <span>Transaksi Terakhir</span>
+          </h3>
+          <button
+            onClick={() => navigate("/transactions")}
+            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            Lihat Semua <ArrowRight size={14} />
+          </button>
         </div>
 
-        {/* Card Tambah Kategori */}
-        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div>
-            <h3 className="text-base font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-              <Tag size={18} className="text-blue-500" />
-              <span>Tambah Kategori Baru</span>
-            </h3>
+        <div className="space-y-2">
+          {recentTransactions.length === 0 ? (
+            <p className="text-xs text-gray-400 py-6 text-center">Belum ada transaksi recorded.</p>
+          ) : (
+            recentTransactions.map((tx) => {
+              const isIncome = tx.type === "income";
+              const formattedDate = new Date(tx.created_at || tx.date).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              });
 
-            <form onSubmit={handleAddCategory} className="space-y-3">
-              <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tipe Kategori</label>
-                <select
-                  value={newCategoryType}
-                  onChange={(e) => setNewCategoryType(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
+              return (
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl hover:border-gray-200 dark:hover:border-slate-700 transition"
                 >
-                  <option value="expense">Pengeluaran (Expense)</option>
-                  <option value="income">Pemasukan (Income)</option>
-                </select>
-              </div>
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        isIncome
+                          ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
+                          : "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400"
+                      }`}
+                    >
+                      {isIncome ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-800 dark:text-white">
+                        {tx.note || tx.category?.name || "Transaksi"}
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {formattedDate} • <span className="font-medium text-gray-500 dark:text-gray-400">{tx.wallet?.name || "Dompet"}</span>
+                      </p>
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Nama Kategori</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Nama Kategori (contoh: Investasi)"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    className="flex-1 bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition flex items-center gap-1 shrink-0"
+                  <p
+                    className={`text-xs font-extrabold ${
+                      isIncome ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                    }`}
                   >
-                    <Plus size={16} /> Kategori
-                  </button>
+                    {isIncome ? "+" : "-"} Rp {(parseFloat(tx.amount) || 0).toLocaleString("id-ID")}
+                  </p>
                 </div>
-              </div>
-            </form>
-          </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
