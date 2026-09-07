@@ -4,6 +4,7 @@ import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/Login";
+import Register from "./pages/Register"; 
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Wallets from "./pages/Wallets";
@@ -24,8 +25,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Route */}
+        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} /> 
 
         {/* Protected Routes (Harus Login) */}
         <Route element={<ProtectedRoute />}>
