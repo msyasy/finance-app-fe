@@ -3,8 +3,6 @@ import {
   PieChart, 
   Pencil, 
   AlertTriangle, 
-  CheckCircle2, 
-  Plus,
   Coins
 } from "lucide-react";
 import API from "../services/api";
@@ -17,19 +15,19 @@ export default function Budgets() {
 
   // Modal Edit Budget State
   const [editCategory, setEditCategory] = useState(null);
-  const [budgetLimit, setBudgetLimit] = useState("");
+  const [budgetDisplay, setBudgetDisplay] = useState("");
+  const [budgetRaw, setBudgetRaw] = useState("");
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const [catRes, txRes] = await Promise.all([
         API.get("/categories").catch(() => null),
-        API.get("/transactions?page=1&limit=200").catch(() => null),
+        API.get("/transactions?page=1&limit=500").catch(() => null), // Limit dibesarkan agar menarik lebih banyak histori
       ]);
 
       if (catRes?.data) {
         const cList = catRes.data.data || catRes.data.categories || [];
-        // Filter khusus kategori Pengeluaran (Expense)
         setCategories(cList.filter((c) => c.type === "expense"));
       }
 
@@ -47,7 +45,7 @@ export default function Budgets() {
     fetchData();
   }, []);
 
-  // Hitung total pengeluaran bulan ini per kategori
+  // Hitung pengeluaran bulan ini per kategori
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
@@ -64,7 +62,26 @@ export default function Budgets() {
   // Buka Modal Edit Budget Limit
   const handleOpenEdit = (cat) => {
     setEditCategory(cat);
-    setBudgetLimit(cat.budget_limit || cat.budget || "");
+    const initialLimit = cat.budget_limit || cat.budget || 0;
+    
+    if (initialLimit > 0) {
+        setBudgetRaw(String(Math.round(initialLimit)));
+        setBudgetDisplay(parseInt(initialLimit, 10).toLocaleString("id-ID"));
+    } else {
+        setBudgetRaw("");
+        setBudgetDisplay("");
+    }
+  };
+
+  // Helper Auto-Format Ribuan
+  const handleAmountChange = (e) => {
+    const rawValue = e.target.value.replace(/\D/g, "");
+    setBudgetRaw(rawValue);
+    if (rawValue) {
+      setBudgetDisplay(parseInt(rawValue, 10).toLocaleString("id-ID"));
+    } else {
+      setBudgetDisplay("");
+    }
   };
 
   // Submit Update Budget Limit
@@ -73,17 +90,17 @@ export default function Budgets() {
     if (!editCategory) return;
 
     try {
-      await API.put(`/categories/${editCategory.id}`, {
-        name: editCategory.name,
-        type: editCategory.type,
-        budget_limit: parseFloat(budgetLimit) || 0,
+      // 1. Path diubah sesuai route BE: /categories/:id/budget
+      // 2. Payload hanya mengirimkan budget_limit
+      await API.put(`/categories/${editCategory.id}/budget`, {
+        budget_limit: parseFloat(budgetRaw) || 0,
       });
 
       toast.success(`Batas anggaran untuk ${editCategory.name} berhasil diperbarui!`);
       setEditCategory(null);
-      fetchData();
+      fetchData(); // Muat ulang data agar Progress Bar langsung ter-update
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal memperbarui anggaran");
+      toast.error(err.response?.data?.message || err.response?.data?.error || "Gagal memperbarui anggaran");
     }
   };
 
@@ -194,29 +211,32 @@ export default function Budgets() {
 
             <form onSubmit={handleUpdateBudget} className="space-y-3">
               <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
                   Batas Pengeluaran Bulanan (Rp)
                 </label>
                 <input
-                  type="number"
-                  placeholder="Contoh: 1500000"
-                  value={budgetLimit}
-                  onChange={(e) => setBudgetLimit(e.target.value)}
+                  type="text"
+                  placeholder="Contoh: 1.500.000"
+                  value={budgetDisplay}
+                  onChange={handleAmountChange}
                   className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
                 />
+                <p className="text-[10px] text-gray-400 mt-1.5">
+                  Kosongkan kolom dan simpan jika ingin menghapus batas anggaran kategori ini.
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setEditCategory(null)}
-                  className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
+                  className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition"
+                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition cursor-pointer"
                 >
                   Simpan
                 </button>
