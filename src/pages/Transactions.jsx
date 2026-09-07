@@ -6,8 +6,6 @@ import {
   Trash2, 
   TrendingUp, 
   TrendingDown, 
-  Filter,
-  Calendar,
   AlertCircle
 } from "lucide-react";
 import API from "../services/api";
@@ -89,12 +87,13 @@ export default function Transactions() {
 
     try {
       await API.post("/transactions", {
-        wallet_id: parseInt(walletId),
-        category_id: parseInt(categoryId),
-        type,
-        amount: parseFloat(amount),
-        note,
-      });
+  wallet_id: parseInt(walletId),
+  category_id: parseInt(categoryId),
+  type,
+  amount: parseFloat(amount),
+  notes: note, // <--- KUNCI UTAMA: Backend Go pakai "notes"
+  note: note,
+});
 
       toast.success("Transaksi berhasil ditambahkan!");
       setAmount("");
@@ -120,8 +119,12 @@ export default function Transactions() {
 
   // Filter List Transaksi
   const filteredTransactions = transactions.filter((tx) => {
-    const matchQuery = (tx.note || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                       (tx.category?.name || "").toLowerCase().includes(searchQuery.toLowerCase());
+    const catObj = categories.find((c) => String(c.id) === String(tx.category_id));
+    const catName = tx.category?.name || catObj?.name || "";
+    const noteText = tx.note || tx.description || "";
+    const searchText = `${catName} ${noteText}`.toLowerCase();
+
+    const matchQuery = searchText.includes(searchQuery.toLowerCase());
     const matchWallet = selectedWalletFilter ? String(tx.wallet_id) === String(selectedWalletFilter) : true;
     const matchCategory = selectedCategoryFilter ? String(tx.category_id) === String(selectedCategoryFilter) : true;
     return matchQuery && matchWallet && matchCategory;
@@ -211,7 +214,7 @@ export default function Transactions() {
           <div className="md:col-span-1">
             <button
               type="submit"
-              className="w-full h-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-1"
+              className="w-full h-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
             >
               <Plus size={16} /> Tambah
             </button>
@@ -226,7 +229,6 @@ export default function Transactions() {
 
           {/* Toolbar Filter & Pencarian */}
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            {/* Input Search */}
             <div className="relative flex-1 md:w-48">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -238,7 +240,6 @@ export default function Transactions() {
               />
             </div>
 
-            {/* Filter Dompet */}
             <select
               value={selectedWalletFilter}
               onChange={(e) => setSelectedWalletFilter(e.target.value)}
@@ -250,7 +251,6 @@ export default function Transactions() {
               ))}
             </select>
 
-            {/* Filter Kategori */}
             <select
               value={selectedCategoryFilter}
               onChange={(e) => setSelectedCategoryFilter(e.target.value)}
@@ -271,6 +271,15 @@ export default function Transactions() {
           ) : (
             filteredTransactions.map((tx) => {
               const isIncome = tx.type === "income";
+
+              // Lookup Kategori & Dompet
+              const catObj = categories.find((c) => String(c.id) === String(tx.category_id));
+              const walletObj = wallets.find((w) => String(w.id) === String(tx.wallet_id));
+
+              const categoryName = tx.category?.name || catObj?.name || "Umum";
+              const walletName = tx.wallet?.name || walletObj?.name || "Dompet";
+              const noteText = tx.note || tx.description;
+
               const formattedDate = new Date(tx.created_at || tx.date).toLocaleDateString("id-ID", {
                 day: "numeric",
                 month: "short",
@@ -293,11 +302,13 @@ export default function Transactions() {
                       {isIncome ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
                     </div>
                     <div>
+                      {/* Tampilkan Catatan Jika Ada, Jika Tidak Tampilkan Kategori */}
                       <p className="text-xs font-bold text-gray-800 dark:text-white">
-                        {tx.note || tx.category?.name || "Transaksi"}
+                        {noteText ? noteText : categoryName}
                       </p>
                       <p className="text-[10px] text-gray-400 mt-0.5">
-                        {formattedDate} • <span className="font-medium text-gray-500 dark:text-gray-400">{tx.wallet?.name || "Dompet"}</span>
+                        {formattedDate} • <span className="font-medium text-gray-500 dark:text-gray-400">{walletName}</span>
+                        {noteText && <span className="ml-1 text-gray-400">({categoryName})</span>}
                       </p>
                     </div>
                   </div>
@@ -340,13 +351,13 @@ export default function Transactions() {
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setDeleteTargetId(null)}
-                className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
+                className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
               >
                 Batal
               </button>
               <button
                 onClick={confirmDelete}
-                className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition"
+                className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition cursor-pointer"
               >
                 Hapus
               </button>
