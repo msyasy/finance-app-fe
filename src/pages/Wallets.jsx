@@ -1,36 +1,42 @@
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import React, { useEffect, useState } from "react";
+import { 
+  Wallet, 
+  Plus, 
+  Pencil, 
+  Trash2, 
+  AlertCircle,
+  CreditCard,
+  Building2,
+  Coins
+} from "lucide-react";
 import API from "../services/api";
-import ConfirmModal from "../components/ConfirmModal";
+import toast from "react-hot-toast";
 
 export default function Wallets() {
   const [wallets, setWallets] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // Form State
+  // Form Tambah State
   const [name, setName] = useState("");
   const [balance, setBalance] = useState("");
-  const [editingWallet, setEditingWallet] = useState(null);
 
-  // Modal State
-  const [modalConfig, setModalConfig] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-    onConfirm: () => {},
-  });
+  // Modal Edit State
+  const [editTarget, setEditTarget] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editBalance, setEditBalance] = useState("");
 
-  // Fetch Wallets dari Backend
+  // Modal Hapus State
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+
   const fetchWallets = async () => {
     setLoading(true);
     try {
       const res = await API.get("/wallets");
-      const data = res.data?.data || res.data?.wallets || (Array.isArray(res.data) ? res.data : []);
-      setWallets(data);
+      if (res?.data) {
+        setWallets(res.data.data || res.data.wallets || []);
+      }
     } catch (err) {
-      console.error("Gagal memuat dompet:", err);
-      toast.error("Gagal memuat data dompet dari server");
-      setWallets([]);
+      console.error("Gagal memuat daftar dompet", err);
     } finally {
       setLoading(false);
     }
@@ -40,182 +46,256 @@ export default function Wallets() {
     fetchWallets();
   }, []);
 
-  // Format Input Angka Rupiah
-  const formatAmountInput = (value) => {
-    const rawValue = value.replace(/\D/g, "");
-    if (!rawValue) return "";
-    return new Intl.NumberFormat("id-ID").format(rawValue);
-  };
-
-  // Tambah / Update Dompet
-  const handleSubmit = async (e) => {
+  // Tambah Dompet Baru
+  const handleAddWallet = async (e) => {
     e.preventDefault();
-    if (!name.trim()) return toast.error("Nama dompet tidak boleh kosong");
-
-    const cleanBalance = parseFloat(balance.replace(/\./g, "")) || 0;
+    if (!name.trim()) {
+      toast.error("Nama dompet wajib diisi!");
+      return;
+    }
 
     try {
-      if (editingWallet) {
-        // Update Dompet
-        await API.put(`/wallets/${editingWallet.id}`, {
-          name,
-          balance: cleanBalance,
-        });
-        toast.success("Dompet berhasil diperbarui!");
-      } else {
-        // Buat Dompet Baru
-        await API.post("/wallets", {
-          name,
-          balance: cleanBalance,
-        });
-        toast.success("Dompet baru berhasil ditambahkan!");
-      }
+      await API.post("/wallets", {
+        name,
+        balance: parseFloat(balance) || 0,
+      });
 
+      toast.success("Dompet berhasil ditambahkan!");
       setName("");
       setBalance("");
-      setEditingWallet(null);
       fetchWallets();
     } catch (err) {
-      toast.error(err.response?.data?.error || "Gagal menyimpan dompet");
+      toast.error(err.response?.data?.message || "Gagal menambah dompet");
     }
   };
 
-  const handleEdit = (wallet) => {
-    setEditingWallet(wallet);
-    setName(wallet.name);
-    setBalance(new Intl.NumberFormat("id-ID").format(wallet.balance));
+  // Open Modal Edit
+  const handleOpenEdit = (wallet) => {
+    setEditTarget(wallet);
+    setEditName(wallet.name);
+    setEditBalance(wallet.balance);
   };
 
-  const handleDelete = (id) => {
-    setModalConfig({
-      isOpen: true,
-      title: "Hapus Dompet",
-      message: "Yakin ingin menghapus dompet ini? Seluruh riwayat mutasi terkait mungkin akan terpengaruh.",
-      onConfirm: async () => {
-        try {
-          await API.delete(`/wallets/${id}`);
-          toast.success("Dompet berhasil dihapus");
-          fetchWallets();
-        } catch {
-          toast.error("Gagal menghapus dompet");
-        }
-      },
-    });
+  // Submit Update Dompet
+  const handleUpdateWallet = async (e) => {
+    e.preventDefault();
+    if (!editTarget) return;
+
+    try {
+      await API.put(`/wallets/${editTarget.id}`, {
+        name: editName,
+        balance: parseFloat(editBalance) || 0,
+      });
+
+      toast.success("Dompet berhasil diperbarui!");
+      setEditTarget(null);
+      fetchWallets();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Gagal memperbarui dompet");
+    }
   };
+
+  // Konfirmasi Hapus Dompet
+  const confirmDelete = async () => {
+    if (!deleteTargetId) return;
+    try {
+      await API.delete(`/wallets/${deleteTargetId}`);
+      toast.success("Dompet berhasil dihapus");
+      setDeleteTargetId(null);
+      fetchWallets();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Gagal menghapus dompet");
+    }
+  };
+
+  const totalBalance = wallets.reduce((acc, curr) => acc + (parseFloat(curr.balance) || 0), 0);
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-          Kelola Dompet Saya
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Atur rekening bank, e-wallet, atau kas tunai kamu di sini
-        </p>
+    <div className="space-y-6">
+      {/* Banner Top */}
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+            <Wallet size={24} className="text-blue-600 dark:text-blue-400" />
+            Kelola Dompet Saya
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            Atur rekening bank, e-wallet, dan sumber dana tunai kamu di satu tempat.
+          </p>
+        </div>
+
+        <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40 px-4 py-2.5 rounded-xl">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Total Semua Saldo</p>
+          <p className="text-lg font-black text-gray-900 dark:text-white mt-0.5">
+            Rp {totalBalance.toLocaleString("id-ID")}
+          </p>
+        </div>
       </div>
 
-      {/* Form Tambah/Edit Dompet */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors space-y-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white">
-          {editingWallet ? "Edit Dompet" : "Tambah Dompet Baru"}
-        </h3>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <input
-            type="text"
-            placeholder="Nama Dompet (Contoh: BCA, Dana, Cash)"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-          <input
-            type="text"
-            placeholder="Saldo Awal (Rp)"
-            required
-            value={balance}
-            onChange={(e) => setBalance(formatAmountInput(e.target.value))}
-            className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-          <div className="flex gap-2">
+      {/* Form Tambah Dompet */}
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+        <h3 className="text-base font-bold text-gray-800 dark:text-white">Tambah Akun / Dompet Baru</h3>
+
+        <form onSubmit={handleAddWallet} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <input
+              type="text"
+              placeholder="Nama Dompet (contoh: BCA / SeaBank / Cash)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <input
+              type="number"
+              placeholder="Saldo Awal (Rp)"
+              value={balance}
+              onChange={(e) => setBalance(e.target.value)}
+              className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div>
             <button
               type="submit"
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl p-2.5 text-xs transition cursor-pointer"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
             >
-              {editingWallet ? "Simpan Perubahan" : "Tambah Dompet"}
+              <Plus size={16} /> Tambah Dompet
             </button>
-            {editingWallet && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingWallet(null);
-                  setName("");
-                  setBalance("");
-                }}
-                className="bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-200 px-4 rounded-xl text-xs font-semibold cursor-pointer"
-              >
-                Batal
-              </button>
-            )}
           </div>
         </form>
       </div>
 
-      {/* Daftar Dompet */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 space-y-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white">
-          Daftar Rekening & Dompet
-        </h3>
-
-        {loading ? (
-          <p className="text-gray-400 text-center py-8 text-xs">Memuat dompet...</p>
-        ) : wallets.length === 0 ? (
-          <p className="text-gray-400 text-center py-8 text-xs">Belum ada dompet terdaftar.</p>
+      {/* Grid List Dompet */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {wallets.length === 0 ? (
+          <div className="col-span-full bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-10 rounded-2xl text-center">
+            <Coins size={32} className="mx-auto text-gray-400 mb-2" />
+            <p className="text-xs text-gray-400">Belum ada dompet terdaftar. Tambahkan dompet pertama kamu di atas!</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {wallets.map((w) => (
-              <div
-                key={w.id}
-                className="p-5 rounded-2xl border border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 flex flex-col justify-between space-y-4"
-              >
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Dompet Aktif
-                  </p>
-                  <h4 className="text-base font-black text-gray-900 dark:text-white mt-1">
-                    {w.name}
-                  </h4>
-                  <p className="text-xl font-bold text-blue-600 dark:text-blue-400 mt-2">
-                    Rp {parseFloat(w.balance || 0).toLocaleString("id-ID")}
-                  </p>
+          wallets.map((w) => (
+            <div
+              key={w.id}
+              className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between hover:border-gray-200 dark:hover:border-slate-700 transition"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                    <CreditCard size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-800 dark:text-white uppercase">{w.name}</h4>
+                    <p className="text-[10px] text-gray-400">Akun Keuangan</p>
+                  </div>
                 </div>
-                <div className="flex justify-end gap-3 pt-3 border-t border-gray-200 dark:border-slate-700">
+
+                <div className="flex items-center gap-1">
                   <button
-                    onClick={() => handleEdit(w)}
-                    className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
+                    onClick={() => handleOpenEdit(w)}
+                    className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition cursor-pointer"
+                    title="Edit Dompet"
                   >
-                    Edit
+                    <Pencil size={15} />
                   </button>
                   <button
-                    onClick={() => handleDelete(w.id)}
-                    className="text-xs font-semibold text-red-500 hover:underline cursor-pointer"
+                    onClick={() => setDeleteTargetId(w.id)}
+                    className="p-1.5 text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition cursor-pointer"
+                    title="Hapus Dompet"
                   >
-                    Hapus
+                    <Trash2 size={15} />
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
+
+              <div className="mt-6 pt-4 border-t border-gray-100 dark:border-slate-800">
+                <p className="text-[10px] text-gray-400 uppercase font-semibold">Sisa Saldo</p>
+                <p className="text-lg font-black text-gray-900 dark:text-white mt-0.5">
+                  Rp {(parseFloat(w.balance) || 0).toLocaleString("id-ID")}
+                </p>
+              </div>
+            </div>
+          ))
         )}
       </div>
 
-      <ConfirmModal
-        isOpen={modalConfig.isOpen}
-        title={modalConfig.title}
-        message={modalConfig.message}
-        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
-        onConfirm={modalConfig.onConfirm}
-      />
+      {/* Modal Edit Dompet */}
+      {editTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
+            <h4 className="text-base font-bold text-gray-900 dark:text-white">Edit Dompet</h4>
+            
+            <form onSubmit={handleUpdateWallet} className="space-y-3">
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Nama Dompet</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Penyesuaian Saldo (Rp)</label>
+                <input
+                  type="number"
+                  value={editBalance}
+                  onChange={(e) => setEditBalance(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setEditTarget(null)}
+                  className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition"
+                >
+                  Simpan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Hapus */}
+      {deleteTargetId && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-xl">
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
+              <AlertCircle size={24} />
+              <h4 className="text-base font-bold text-gray-900 dark:text-white">Konfirmasi Hapus</h4>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+              Apakah kamu yakin ingin menghapus dompet ini? Riwayat transaksi terkait dompet ini bisa ikut terpengaruh.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setDeleteTargetId(null)}
+                className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition"
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
