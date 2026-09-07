@@ -1,44 +1,74 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { 
-  Wallet, 
-  TrendingUp, 
-  TrendingDown, 
-  Percent, 
-  Lightbulb, 
+import {
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  Percent,
+  ArrowRight,
   Receipt,
-  ArrowRight
+  Lightbulb,
+  CreditCard,
+  PieChart as PieIcon,
+  BarChart3,
 } from "lucide-react";
+import { Link } from "react-router-dom";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 import API from "../services/api";
 
+const CATEGORY_COLORS = [
+  "#3B82F6",
+  "#EF4444",
+  "#10B981",
+  "#F59E0B",
+  "#8B5CF6",
+  "#EC4899",
+  "#6366F1",
+];
+
 export default function Dashboard() {
-  const navigate = useNavigate();
-  const [userName, setUserName] = useState("Pengguna");
   const [wallets, setWallets] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [cashFlowData, setCashFlowData] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const fetchData = async () => {
+    setLoading(true);
     try {
-      const [meRes, walletRes, txRes] = await Promise.all([
-        API.get("/me").catch(() => null),
+      const [walletRes, catRes, txRes, cfRes] = await Promise.all([
         API.get("/wallets").catch(() => null),
-        API.get("/transactions?page=1&limit=100").catch(() => null),
+        API.get("/categories").catch(() => null),
+        API.get("/transactions?page=1&limit=1000").catch(() => null),
+        API.get("/transactions/cashflow").catch(() => null),
       ]);
-
-      if (meRes?.data) {
-        const u = meRes.data.data || meRes.data;
-        setUserName(u.name || u.full_name || u.email?.split("@")[0]);
-      }
 
       if (walletRes?.data) {
         setWallets(walletRes.data.data || walletRes.data.wallets || []);
       }
-
+      if (catRes?.data) {
+        setCategories(catRes.data.data || catRes.data.categories || []);
+      }
       if (txRes?.data) {
         setTransactions(txRes.data.data || txRes.data.transactions || []);
       }
-    } catch (e) {
-      console.error("Gagal memuat dashboard", e);
+      if (cfRes?.data) {
+        setCashFlowData(cfRes.data.data || []);
+      }
+    } catch (err) {
+      console.error("Gagal memuat data dashboard", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,132 +76,346 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
-  const totalBalance = wallets.reduce((acc, curr) => acc + (parseFloat(curr.balance) || 0), 0);
+  // Total Saldo
+  const totalBalance = wallets.reduce(
+    (acc, w) => acc + (parseFloat(w.balance) || 0),
+    0,
+  );
 
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
+  // Transaksi Bulan Ini
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
 
-  const currentMonthTx = transactions.filter((t) => {
-    const d = new Date(t.created_at || t.date);
+  const currentMonthTx = transactions.filter((tx) => {
+    const d = new Date(tx.created_at || tx.date);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
 
   const totalIncome = currentMonthTx
-    .filter((t) => t.type === "income")
-    .reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+    .filter((tx) => tx.type === "income")
+    .reduce((acc, tx) => acc + (parseFloat(tx.amount) || 0), 0);
 
   const totalExpense = currentMonthTx
-    .filter((t) => t.type === "expense")
-    .reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+    .filter((tx) => tx.type === "expense")
+    .reduce((acc, tx) => acc + (parseFloat(tx.amount) || 0), 0);
 
-  const savingsRate = totalIncome > 0 ? Math.max(0, Math.round(((totalIncome - totalExpense) / totalIncome) * 100)) : 0;
+  const savingsRate =
+    totalIncome > 0
+      ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100)
+      : 0;
 
-  // Ambil 5 Transaksi Terakhir
-  const recentTransactions = transactions.slice(0, 5);
+  // Pie Chart Data
+  const categoryMap = {};
+  currentMonthTx
+    .filter((tx) => tx.type === "expense")
+    .forEach((tx) => {
+      const catObj = categories.find(
+        (c) => String(c.id) === String(tx.category_id),
+      );
+      const catName = tx.category?.name || catObj?.name || "Lainnya";
+      categoryMap[catName] =
+        (categoryMap[catName] || 0) + (parseFloat(tx.amount) || 0);
+    });
+
+  const categoryPieData = Object.keys(categoryMap).map((key) => ({
+    name: key,
+    value: categoryMap[key],
+  }));
 
   return (
     <div className="space-y-6">
-      {/* Banner Top */}
-      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm transition-colors duration-300">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Dashboard Keuangan</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Selamat Datang kembali, <span className="font-semibold text-blue-600 dark:text-blue-400 capitalize">{userName}</span>!
-        </p>
-      </div>
-
-      {/* Ringkasan Kartu Statistik */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider">TOTAL SALDO UTAMA</p>
-            <p className="text-xl font-black text-gray-900 dark:text-white mt-1">Rp {totalBalance.toLocaleString("id-ID")}</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-            <Wallet size={20} />
-          </div>
+      {/* BANNER DENGAN KARTU SEJAJAR HORIZONTAL */}
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6">
+        {/* Kiri: Teks Sapaan */}
+        <div className="shrink-0">
+          <h1 className="text-xl font-bold text-gray-800 dark:text-white">
+            Dashboard Keuangan
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Selamat Datang kembali,{" "}
+            <span className="font-semibold text-blue-600 dark:text-blue-400">
+              Pengguna
+            </span>
+            !
+          </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider">PEMASUKAN (BULAN INI)</p>
-            <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">+ Rp {totalIncome.toLocaleString("id-ID")}</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-            <TrendingUp size={20} />
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider">PENGELUARAN (BULAN INI)</p>
-            <p className="text-xl font-black text-rose-600 dark:text-rose-400 mt-1">- Rp {totalExpense.toLocaleString("id-ID")}</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-            <TrendingDown size={20} />
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider">SAVING RATE</p>
-            <p className="text-xl font-black text-amber-500 mt-1">{savingsRate}%</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center">
-            <Percent size={20} />
-          </div>
-        </div>
-      </div>
-
-      {/* Insights Card */}
-      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
-          <Lightbulb size={18} className="text-amber-500" />
-          <span>Insights & Analisis Keuangan</span>
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-gray-50 dark:bg-slate-800/50 p-4 rounded-xl border border-gray-100 dark:border-slate-800">
-            <div className="flex justify-between items-center text-xs font-semibold text-gray-600 dark:text-gray-300">
-              <span>Savings Rate Bulan Ini</span>
-              <span className="text-blue-600 dark:text-blue-400">{savingsRate}%</span>
+        {/* Kanan: 4 Kartu Ringkasan Dikecilkan & Sejajar */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full xl:w-auto flex-1">
+          {/* Total Saldo */}
+          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">
+                Total Saldo
+              </p>
+              <h3 className="text-xs font-black text-gray-900 dark:text-white mt-0.5 truncate">
+                Rp {totalBalance.toLocaleString("id-ID")}
+              </h3>
             </div>
-            <div className="w-full bg-gray-200 dark:bg-slate-700 h-2 rounded-full mt-2 overflow-hidden">
-              <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${Math.min(savingsRate, 100)}%` }}></div>
+            <div className="w-7 h-7 rounded-lg bg-blue-100/60 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Wallet size={14} />
             </div>
-            <p className="text-[11px] text-gray-400 mt-2">Target tabungan sehat minimal 20% dari total pendapatan.</p>
           </div>
 
-          <div className="bg-gray-50 dark:bg-slate-800/50 p-4 rounded-xl border border-gray-100 dark:border-slate-800 flex flex-col justify-center">
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Status Operasional</p>
-            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-              {currentMonthTx.length > 0 ? `${currentMonthTx.length} transaksi telah tercatat pada bulan ini.` : "Belum ada transaksi tercatat bulan ini."}
-            </p>
+          {/* Pemasukan */}
+          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">
+                Pemasukan
+              </p>
+              <h3 className="text-xs font-black text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
+                + Rp {totalIncome.toLocaleString("id-ID")}
+              </h3>
+            </div>
+            <div className="w-7 h-7 rounded-lg bg-emerald-100/60 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <TrendingUp size={14} />
+            </div>
+          </div>
+
+          {/* Pengeluaran */}
+          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">
+                Pengeluaran
+              </p>
+              <h3 className="text-xs font-black text-rose-600 dark:text-rose-400 mt-0.5 truncate">
+                - Rp {totalExpense.toLocaleString("id-ID")}
+              </h3>
+            </div>
+            <div className="w-7 h-7 rounded-lg bg-rose-100/60 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+              <TrendingDown size={14} />
+            </div>
+          </div>
+
+          {/* Saving Rate */}
+          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">
+                Saving Rate
+              </p>
+              <h3 className="text-xs font-black text-amber-500 mt-0.5">
+                {savingsRate}%
+              </h3>
+            </div>
+            <div className="w-7 h-7 rounded-lg bg-amber-100/60 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center shrink-0">
+              <Percent size={14} />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Section: 5 Transaksi Terakhir */}
+      {/* Saldo Per Dompet */}
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            <Receipt size={18} className="text-blue-500" />
-            <span>Transaksi Terakhir</span>
+            <CreditCard
+              size={18}
+              className="text-blue-600 dark:text-blue-400"
+            />
+            Saldo Per Dompet / Rekening
           </h3>
-          <button
-            onClick={() => navigate("/transactions")}
-            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+          <Link
+            to="/wallets"
+            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+          >
+            Kelola Dompet <ArrowRight size={14} />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {wallets.map((w) => (
+            <div
+              key={w.id}
+              className="p-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl space-y-1"
+            >
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                {w.name}
+              </p>
+              <p className="text-base font-extrabold text-gray-900 dark:text-white">
+                Rp {(parseFloat(w.balance) || 0).toLocaleString("id-ID")}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Arus Kas */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+          <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
+            <BarChart3 size={18} className="text-blue-600 dark:text-blue-400" />
+            Tren Arus Kas (6 Bulan Terakhir)
+          </h3>
+
+          <div className="h-64 w-full pt-2">
+            {cashFlowData.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-20">
+                Data arus kas belum tersedia.
+              </p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={cashFlowData}>
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    formatter={(value) => [
+                      `Rp ${Number(value).toLocaleString("id-ID")}`,
+                      "",
+                    ]}
+                    contentStyle={{ borderRadius: "12px", fontSize: "12px" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "12px" }} />
+                  <Bar
+                    dataKey="income"
+                    name="Pemasukan"
+                    fill="#10B981"
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="expense"
+                    name="Pengeluaran"
+                    fill="#EF4444"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Pengeluaran Pie Chart */}
+        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+          <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
+            <PieIcon size={18} className="text-rose-500" />
+            Pengeluaran Bulan Ini
+          </h3>
+
+          <div className="h-64 w-full flex items-center justify-center">
+            {categoryPieData.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center">
+                Belum ada pengeluaran bulan ini.
+              </p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={80}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {categoryPieData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => [
+                      `Rp ${Number(value).toLocaleString("id-ID")}`,
+                      "",
+                    ]}
+                    contentStyle={{ borderRadius: "12px", fontSize: "12px" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "11px" }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Insights */}
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+        <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
+          <Lightbulb size={18} className="text-amber-500" />
+          Insights & Analisis Kesehatan Keuangan
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 bg-gray-50 dark:bg-slate-800/40 rounded-xl border border-gray-100 dark:border-slate-800 space-y-2">
+            <div className="flex justify-between text-xs font-semibold">
+              <span className="text-gray-600 dark:text-gray-300">
+                Savings Rate Bulan Ini
+              </span>
+              <span className="text-blue-600 dark:text-blue-400">
+                {savingsRate}%
+              </span>
+            </div>
+            <div className="w-full h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-600 transition-all duration-500"
+                style={{ width: `${Math.min(Math.max(savingsRate, 0), 100)}%` }}
+              ></div>
+            </div>
+            <p className="text-[10px] text-gray-400">
+              Target tabungan sehat minimal 20% dari total pendapatan.
+            </p>
+          </div>
+
+          <div className="p-4 bg-gray-50 dark:bg-slate-800/40 rounded-xl border border-gray-100 dark:border-slate-800 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                Status Operasional
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                <span className="font-bold text-gray-800 dark:text-white">
+                  {currentMonthTx.length}
+                </span>{" "}
+                transaksi telah tercatat pada bulan ini.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Transaksi Terakhir */}
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
+            <Receipt size={18} className="text-blue-600 dark:text-blue-400" />
+            Transaksi Terakhir
+          </h3>
+          <Link
+            to="/transactions"
+            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
           >
             Lihat Semua <ArrowRight size={14} />
-          </button>
+          </Link>
         </div>
 
         <div className="space-y-2">
-          {recentTransactions.length === 0 ? (
-            <p className="text-xs text-gray-400 py-6 text-center">Belum ada transaksi recorded.</p>
+          {transactions.length === 0 ? (
+            <p className="text-xs text-gray-400 py-6 text-center">
+              Belum ada transaksi recorded.
+            </p>
           ) : (
-            recentTransactions.map((tx) => {
+            transactions.slice(0, 5).map((tx) => {
               const isIncome = tx.type === "income";
-              const formattedDate = new Date(tx.created_at || tx.date).toLocaleDateString("id-ID", {
+
+              const catObj = categories.find(
+                (c) => String(c.id) === String(tx.category_id),
+              );
+              const walletObj = wallets.find(
+                (w) => String(w.id) === String(tx.wallet_id),
+              );
+
+              const categoryName = tx.category?.name || catObj?.name || "Umum";
+              const walletName = tx.wallet?.name || walletObj?.name || "Dompet";
+              const noteText = tx.notes || tx.note || tx.description;
+
+              const displayTitle = noteText
+                ? `${categoryName} > ${noteText}`
+                : categoryName;
+
+              const formattedDate = new Date(
+                tx.created_at || tx.date,
+              ).toLocaleDateString("id-ID", {
                 day: "numeric",
                 month: "short",
                 year: "numeric",
@@ -180,7 +424,7 @@ export default function Dashboard() {
               return (
                 <div
                   key={tx.id}
-                  className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl hover:border-gray-200 dark:hover:border-slate-700 transition"
+                  className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl"
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -190,24 +434,34 @@ export default function Dashboard() {
                           : "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400"
                       }`}
                     >
-                      {isIncome ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                      {isIncome ? (
+                        <TrendingUp size={18} />
+                      ) : (
+                        <TrendingDown size={18} />
+                      )}
                     </div>
                     <div>
                       <p className="text-xs font-bold text-gray-800 dark:text-white">
-                        {tx.note || tx.category?.name || "Transaksi"}
+                        {displayTitle}
                       </p>
                       <p className="text-[10px] text-gray-400 mt-0.5">
-                        {formattedDate} • <span className="font-medium text-gray-500 dark:text-gray-400">{tx.wallet?.name || "Dompet"}</span>
+                        {formattedDate} •{" "}
+                        <span className="font-medium text-gray-500 dark:text-gray-400">
+                          {walletName}
+                        </span>
                       </p>
                     </div>
                   </div>
 
                   <p
                     className={`text-xs font-extrabold ${
-                      isIncome ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                      isIncome
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-rose-600 dark:text-rose-400"
                     }`}
                   >
-                    {isIncome ? "+" : "-"} Rp {(parseFloat(tx.amount) || 0).toLocaleString("id-ID")}
+                    {isIncome ? "+" : "-"} Rp{" "}
+                    {(parseFloat(tx.amount) || 0).toLocaleString("id-ID")}
                   </p>
                 </div>
               );
