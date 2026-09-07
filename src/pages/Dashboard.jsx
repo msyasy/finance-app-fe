@@ -151,6 +151,17 @@ export default function Dashboard() {
     .sort((a, b) => (parseFloat(b.balance) || 0) - (parseFloat(a.balance) || 0))
     .slice(0, 4);
 
+  if (loading) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-3">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-xs font-semibold text-gray-400">
+          Memuat data keuangan...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* HEADER & RINGKASAN SALDO SEJAJAR */}
