@@ -1,18 +1,21 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import MainLayout from "./layouts/MainLayout"; 
+
+import MainLayout from "./layouts/MainLayout";
+
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Wallets from "./pages/Wallets";
 import Transfer from "./pages/Transfer";
 import Budgets from "./pages/Budgets";
-import CashFlow from "./pages/CashFlow"; 
+import CashFlow from "./pages/CashFlow";
 import Categories from "./pages/Categories";
 import Reports from "./pages/Reports";
 import Maintenance from "./pages/Maintenance";
 
 export default function App() {
-  const isMaintenance = import.meta.env.VITE_MAINTENANCE_MODE === "true";
+  const isMaintenance =
+    import.meta.env.VITE_MAINTENANCE_MODE === "true";
 
   if (isMaintenance) {
     return <Maintenance />;
@@ -21,9 +24,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+
         <Route path="/login" element={<Login />} />
 
-        {/* Gunakan MainLayout */}
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/transactions" element={<Transactions />} />
@@ -35,7 +38,11 @@ export default function App() {
           <Route path="/reports" element={<Reports />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route
+          path="*"
+          element={<Navigate to="/dashboard" replace />}
+        />
+
       </Routes>
     </BrowserRouter>
   );
