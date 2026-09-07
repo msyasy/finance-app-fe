@@ -42,16 +42,16 @@ export default function Dashboard() {
   const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [cashFlowData, setCashFlowData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const [walletRes, catRes, txRes, cfRes] = await Promise.all([
-        API.get("/wallets").catch(() => null),
-        API.get("/categories").catch(() => null),
-        API.get("/transactions?page=1&limit=1000").catch(() => null),
-        API.get("/transactions/cashflow").catch(() => null),
+        API.get("/wallets"),
+        API.get("/categories"),
+        API.get("/transactions?page=1&limit=1000"),
+        API.get("/transactions/cashflow"),
       ]);
 
       if (walletRes?.data) {
@@ -243,7 +243,7 @@ export default function Dashboard() {
               size={18}
               className="text-blue-600 dark:text-blue-400"
             />
-            Saldo Rekening 
+            Saldo Rekening
           </h3>
           <Link
             to="/wallets"
