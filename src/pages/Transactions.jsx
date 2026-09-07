@@ -9,7 +9,6 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
-  WalletCards,
 } from "lucide-react";
 import API from "../services/api";
 import toast from "react-hot-toast";
@@ -20,11 +19,9 @@ export default function Transactions() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Pagination State
+  // Client-Side Pagination State
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const limit = 10;
+  const itemsPerPage = 10;
 
   // Form State
   const [walletId, setWalletId] = useState("");
@@ -48,7 +45,7 @@ export default function Transactions() {
     balance: 0,
   });
 
-  // Helper Format Input Angka ke Ribuan
+  // Format Input Angka ke Ribuan
   const handleAmountChange = (e) => {
     const rawValue = e.target.value.replace(/\D/g, "");
     setAmountRaw(rawValue);
@@ -59,22 +56,18 @@ export default function Transactions() {
     }
   };
 
-  // Load Data
+  // Load Seluruh Data (Limit Besar untuk Client-Side Filter)
   const fetchData = async () => {
     setLoading(true);
     try {
       const [txRes, walletRes, catRes] = await Promise.all([
-        API.get(`/transactions?page=${page}&limit=${limit}`).catch(() => null),
+        API.get("/transactions?page=1&limit=1000").catch(() => null),
         API.get("/wallets").catch(() => null),
         API.get("/categories").catch(() => null),
       ]);
 
       if (txRes?.data) {
         setTransactions(txRes.data.data || txRes.data.transactions || []);
-        if (txRes.data.pagination) {
-          setTotalPages(txRes.data.pagination.total_pages || 1);
-          setTotalItems(txRes.data.pagination.total_items || 0);
-        }
       }
       if (walletRes?.data) {
         const wList = walletRes.data.data || walletRes.data.wallets || [];
@@ -94,12 +87,11 @@ export default function Transactions() {
 
   useEffect(() => {
     fetchData();
-  }, [page]);
+  }, []);
 
   // Filter Kategori Sesuai Tipe di Form
   const filteredCategoriesForForm = categories.filter((c) => c.type === type);
 
-  // Reset category state saat type berubah di form
   useEffect(() => {
     if (filteredCategoriesForForm.length > 0) {
       setCategoryId(filteredCategoriesForForm[0].id);
@@ -107,6 +99,11 @@ export default function Transactions() {
       setCategoryId("");
     }
   }, [type, categories]);
+
+  // Handle Reset Halaman ke-1 Saat Filter Berubah
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedWalletFilter, selectedCategoryFilter]);
 
   // Handle Submit Tambah Transaksi
   const handleAddTransaction = async (e) => {
@@ -119,7 +116,6 @@ export default function Transactions() {
     const inputAmount = parseFloat(amountRaw);
     const targetWallet = wallets.find((w) => String(w.id) === String(walletId));
 
-    // Validasi Cepat Saldo di Frontend untuk Pengeluaran (Expense)
     if (type === "expense" && targetWallet) {
       const currentBal = parseFloat(targetWallet.balance) || 0;
       if (inputAmount > currentBal) {
@@ -127,7 +123,7 @@ export default function Transactions() {
           name: targetWallet.name,
           balance: currentBal,
         });
-        setInsufficientBalanceModal(true); // Tampilkan modal alert khusus
+        setInsufficientBalanceModal(true);
         toast.error(`Saldo ${targetWallet.name} tidak mencukupi!`);
         return;
       }
@@ -173,7 +169,7 @@ export default function Transactions() {
     }
   };
 
-  // Filter List Transaksi
+  // 1. Filter Seluruh Transaksi berdasarkan Kriteria
   const filteredTransactions = transactions.filter((tx) => {
     const catObj = categories.find(
       (c) => String(c.id) === String(tx.category_id),
@@ -191,6 +187,14 @@ export default function Transactions() {
       : true;
     return matchQuery && matchWallet && matchCategory;
   });
+
+  // 2. Client-side Pagination dari Data Terfilter
+  const totalItems = filteredTransactions.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const paginatedTransactions = filteredTransactions.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage,
+  );
 
   return (
     <div className="space-y-6">
@@ -264,7 +268,7 @@ export default function Transactions() {
             </select>
           </div>
 
-          {/* Input Nominal dengan Auto-Format Titik */}
+          {/* Input Nominal */}
           <div className="md:col-span-1">
             <input
               type="text"
@@ -351,12 +355,12 @@ export default function Transactions() {
 
         {/* List Transaksi */}
         <div className="space-y-2">
-          {filteredTransactions.length === 0 ? (
+          {paginatedTransactions.length === 0 ? (
             <p className="text-xs text-gray-400 py-10 text-center">
               Tidak ada data transaksi yang ditemukan.
             </p>
           ) : (
-            filteredTransactions.map((tx) => {
+            paginatedTransactions.map((tx) => {
               const isIncome = tx.type === "income";
 
               const catObj = categories.find(
@@ -440,41 +444,45 @@ export default function Transactions() {
           )}
         </div>
 
-        {/* Control Pagination (Next / Prev) */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-slate-800">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Halaman{" "}
-            <span className="font-bold text-gray-800 dark:text-white">
-              {page}
-            </span>{" "}
-            dari{" "}
-            <span className="font-bold text-gray-800 dark:text-white">
-              {totalPages}
-            </span>{" "}
-            (Total {totalItems} transaksi)
-          </p>
+        {/* Control Pagination: Cuma tampil kalau total item terfilter > 10 */}
+        {totalItems > itemsPerPage && (
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-slate-800">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Halaman{" "}
+              <span className="font-bold text-gray-800 dark:text-white">
+                {page}
+              </span>{" "}
+              dari{" "}
+              <span className="font-bold text-gray-800 dark:text-white">
+                {totalPages}
+              </span>{" "}
+              (Total {totalItems} transaksi)
+            </p>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-              disabled={page === 1}
-              className="px-3 py-1.5 text-xs font-medium rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition cursor-pointer"
-            >
-              <ChevronLeft size={14} /> Prev
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 text-xs font-medium rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition cursor-pointer"
+              >
+                <ChevronLeft size={14} /> Prev
+              </button>
 
-            <button
-              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
-              disabled={page >= totalPages}
-              className="px-3 py-1.5 text-xs font-medium rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition cursor-pointer"
-            >
-              Next <ChevronRight size={14} />
-            </button>
+              <button
+                onClick={() =>
+                  setPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={page >= totalPages}
+                className="px-3 py-1.5 text-xs font-medium rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition cursor-pointer"
+              >
+                Next <ChevronRight size={14} />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* MODAL ALERT: SALDO TIDAK MENCUKUPI */}
+      {/* Modal Alert Saldo Tidak Mencukupi */}
       {insufficientBalanceModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-xl text-center">
