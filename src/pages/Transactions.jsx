@@ -7,6 +7,9 @@ import {
   TrendingUp,
   TrendingDown,
   AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  WalletCards,
 } from "lucide-react";
 import API from "../services/api";
 import toast from "react-hot-toast";
@@ -17,11 +20,18 @@ export default function Transactions() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const limit = 10;
+
   // Form State
   const [walletId, setWalletId] = useState("");
   const [type, setType] = useState("expense");
   const [categoryId, setCategoryId] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amountDisplay, setAmountDisplay] = useState("");
+  const [amountRaw, setAmountRaw] = useState("");
   const [note, setNote] = useState("");
 
   // Filter State
@@ -29,21 +39,42 @@ export default function Transactions() {
   const [selectedWalletFilter, setSelectedWalletFilter] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("");
 
-  // Modal Hapus State
+  // Modal State
   const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [insufficientBalanceModal, setInsufficientBalanceModal] =
+    useState(false);
+  const [selectedWalletInfo, setSelectedWalletInfo] = useState({
+    name: "",
+    balance: 0,
+  });
+
+  // Helper Format Input Angka ke Ribuan
+  const handleAmountChange = (e) => {
+    const rawValue = e.target.value.replace(/\D/g, "");
+    setAmountRaw(rawValue);
+    if (rawValue) {
+      setAmountDisplay(parseInt(rawValue, 10).toLocaleString("id-ID"));
+    } else {
+      setAmountDisplay("");
+    }
+  };
 
   // Load Data
   const fetchData = async () => {
     setLoading(true);
     try {
       const [txRes, walletRes, catRes] = await Promise.all([
-        API.get("/transactions?page=1&limit=100").catch(() => null),
+        API.get(`/transactions?page=${page}&limit=${limit}`).catch(() => null),
         API.get("/wallets").catch(() => null),
         API.get("/categories").catch(() => null),
       ]);
 
       if (txRes?.data) {
         setTransactions(txRes.data.data || txRes.data.transactions || []);
+        if (txRes.data.pagination) {
+          setTotalPages(txRes.data.pagination.total_pages || 1);
+          setTotalItems(txRes.data.pagination.total_items || 0);
+        }
       }
       if (walletRes?.data) {
         const wList = walletRes.data.data || walletRes.data.wallets || [];
@@ -63,7 +94,7 @@ export default function Transactions() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [page]);
 
   // Filter Kategori Sesuai Tipe di Form
   const filteredCategoriesForForm = categories.filter((c) => c.type === type);
@@ -80,9 +111,26 @@ export default function Transactions() {
   // Handle Submit Tambah Transaksi
   const handleAddTransaction = async (e) => {
     e.preventDefault();
-    if (!walletId || !categoryId || !amount) {
+    if (!walletId || !categoryId || !amountRaw) {
       toast.error("Mohon lengkapi dompet, kategori, dan nominal!");
       return;
+    }
+
+    const inputAmount = parseFloat(amountRaw);
+    const targetWallet = wallets.find((w) => String(w.id) === String(walletId));
+
+    // Validasi Cepat Saldo di Frontend untuk Pengeluaran (Expense)
+    if (type === "expense" && targetWallet) {
+      const currentBal = parseFloat(targetWallet.balance) || 0;
+      if (inputAmount > currentBal) {
+        setSelectedWalletInfo({
+          name: targetWallet.name,
+          balance: currentBal,
+        });
+        setInsufficientBalanceModal(true); // Tampilkan modal alert khusus
+        toast.error(`Saldo ${targetWallet.name} tidak mencukupi!`);
+        return;
+      }
     }
 
     try {
@@ -90,17 +138,25 @@ export default function Transactions() {
         wallet_id: parseInt(walletId),
         category_id: parseInt(categoryId),
         type,
-        amount: parseFloat(amount),
-        notes: note, // Mengirim "notes" sesuai struct Go backend
+        amount: inputAmount,
+        notes: note,
         note: note,
       });
 
       toast.success("Transaksi berhasil ditambahkan!");
-      setAmount("");
+      setAmountDisplay("");
+      setAmountRaw("");
       setNote("");
+      setPage(1);
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal menambah transaksi");
+      const errorMessage =
+        err.response?.data?.error || err.response?.data?.message;
+      if (errorMessage && errorMessage.toLowerCase().includes("mencukupi")) {
+        setInsufficientBalanceModal(true);
+      } else {
+        toast.error(errorMessage || "Gagal menambah transaksi");
+      }
     }
   };
 
@@ -171,7 +227,8 @@ export default function Transactions() {
               )}
               {wallets.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.name}
+                  {w.name} (Rp{" "}
+                  {parseFloat(w.balance || 0).toLocaleString("id-ID")})
                 </option>
               ))}
             </select>
@@ -207,13 +264,13 @@ export default function Transactions() {
             </select>
           </div>
 
-          {/* Nominal */}
+          {/* Input Nominal dengan Auto-Format Titik */}
           <div className="md:col-span-1">
             <input
-              type="number"
+              type="text"
               placeholder="Jumlah (Rp)"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              value={amountDisplay}
+              onChange={handleAmountChange}
               className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -302,7 +359,6 @@ export default function Transactions() {
             filteredTransactions.map((tx) => {
               const isIncome = tx.type === "income";
 
-              // Lookup Kategori & Dompet
               const catObj = categories.find(
                 (c) => String(c.id) === String(tx.category_id),
               );
@@ -314,7 +370,6 @@ export default function Transactions() {
               const walletName = tx.wallet?.name || walletObj?.name || "Dompet";
               const noteText = tx.notes || tx.note || tx.description;
 
-              // Format: Kategori > Catatan (misal: Makan > Nasgor)
               const displayTitle = noteText
                 ? `${categoryName} > ${noteText}`
                 : categoryName;
@@ -347,7 +402,6 @@ export default function Transactions() {
                       )}
                     </div>
                     <div>
-                      {/* Tampilkan Format Kategori > Catatan */}
                       <p className="text-xs font-bold text-gray-800 dark:text-white">
                         {displayTitle}
                       </p>
@@ -385,7 +439,78 @@ export default function Transactions() {
             })
           )}
         </div>
+
+        {/* Control Pagination (Next / Prev) */}
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-slate-800">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Halaman{" "}
+            <span className="font-bold text-gray-800 dark:text-white">
+              {page}
+            </span>{" "}
+            dari{" "}
+            <span className="font-bold text-gray-800 dark:text-white">
+              {totalPages}
+            </span>{" "}
+            (Total {totalItems} transaksi)
+          </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 text-xs font-medium rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition cursor-pointer"
+            >
+              <ChevronLeft size={14} /> Prev
+            </button>
+
+            <button
+              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={page >= totalPages}
+              className="px-3 py-1.5 text-xs font-medium rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition cursor-pointer"
+            >
+              Next <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* MODAL ALERT: SALDO TIDAK MENCUKUPI */}
+      {insufficientBalanceModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-xl text-center">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
+              <AlertCircle size={28} />
+            </div>
+
+            <div>
+              <h4 className="text-base font-bold text-gray-900 dark:text-white">
+                Saldo Tidak Mencukupi!
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                Nominal transaksi yang kamu masukkan melebihi sisa saldo pada
+                dompet{" "}
+                <span className="font-bold text-gray-800 dark:text-gray-200">
+                  {selectedWalletInfo.name}
+                </span>{" "}
+                (Sisa Saldo:{" "}
+                <span className="font-bold text-rose-600 dark:text-rose-400">
+                  Rp {selectedWalletInfo.balance.toLocaleString("id-ID")}
+                </span>
+                ).
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => setInsufficientBalanceModal(false)}
+                className="w-full px-4 py-2.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition cursor-pointer"
+              >
+                Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Konfirmasi Hapus */}
       {deleteTargetId && (
