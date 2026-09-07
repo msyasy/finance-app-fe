@@ -2,9 +2,13 @@ import React from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Sidebar from "../components/Sidebar";
+import useAutoLogout from "../hooks/useAutoLogout";
 
 export default function MainLayout() {
   const navigate = useNavigate();
+
+  // Jalankan pemantau aktivitas idle 5 menit
+  useAutoLogout();
 
   const handleLogout = () => {
     localStorage.removeItem("token");
