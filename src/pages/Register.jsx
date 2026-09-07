@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import API from "../services/api";
+import toast from "react-hot-toast";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -14,7 +15,7 @@ export default function Register() {
     setError("");
     try {
       await API.post("/register", { name, email, password });
-      alert("Registrasi berhasil! Silakan login.");
+      toast.success("Registrasi berhasil! Silakan login.");
       navigate("/login");
     } catch (err) {
       setError(err.response?.data?.error || "Registrasi gagal");
@@ -22,68 +23,81 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
-        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
-          Daftar Akun Baru
-        </h2>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950 p-4 transition-colors">
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-8 rounded-2xl shadow-xl w-full max-w-md space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold text-center text-gray-800 dark:text-white">
+            Daftar Akun Baru
+          </h2>
+          <p className="text-xs text-center text-gray-400 mt-1">
+            Mulai kelola keuanganmu dengan lebih terstruktur.
+          </p>
+        </div>
 
         {error && (
-          <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">
+          <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 p-3 rounded-xl text-xs font-semibold">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
               Nama Lengkap
             </label>
             <input
               type="text"
               required
-              className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="Masukkan nama lengkap"
+              className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
               Email
             </label>
             <input
               type="email"
               required
-              className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="nama@email.com"
+              className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
               Password
             </label>
             <input
               type="password"
               required
-              className="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="••••••••"
+              className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <button
-            type="submit"
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold p-2 rounded transition duration-200 cursor-pointer"
-          >
-            Daftar
-          </button>
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+            >
+              Daftar
+            </button>
+          </div>
         </form>
 
-        <p className="mt-4 text-center text-sm text-gray-600">
+        <p className="text-center text-xs text-gray-500 dark:text-gray-400">
           Sudah punya akun?{" "}
           <Link
             to="/login"
-            className="text-blue-600 font-semibold hover:underline"
+            className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
           >
             Login di sini
           </Link>
