@@ -1,21 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import SidebarLayout from "./components/SidebarLayout";
+import MainLayout from "./layouts/MainLayout"; 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Wallets from "./pages/Wallets";
 import Transfer from "./pages/Transfer";
 import Budgets from "./pages/Budgets";
-import Cashflow from "./pages/Cashflow";
+import CashFlow from "./pages/CashFlow"; 
 import Categories from "./pages/Categories";
 import Reports from "./pages/Reports";
 import Maintenance from "./pages/Maintenance";
 
 export default function App() {
-  // Pengecekan status maintenance dari file .env (VITE_MAINTENANCE_MODE=true)
   const isMaintenance = import.meta.env.VITE_MAINTENANCE_MODE === "true";
 
-  // Jika maintenance aktif, langsung tampilkan halaman perbaikan tanpa merender router
   if (isMaintenance) {
     return <Maintenance />;
   }
@@ -25,14 +23,14 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
 
-        {/* Layout Berisi Sidebar */}
-        <Route element={<SidebarLayout />}>
+        {/* Gunakan MainLayout */}
+        <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/wallets" element={<Wallets />} />
           <Route path="/transfer" element={<Transfer />} />
           <Route path="/budgets" element={<Budgets />} />
-          <Route path="/cashflow" element={<Cashflow />} />
+          <Route path="/cashflow" element={<CashFlow />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/reports" element={<Reports />} />
         </Route>
