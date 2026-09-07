@@ -11,7 +11,6 @@ import {
   PieChart as PieIcon,
   BarChart3,
   AlertTriangle,
-  CheckCircle2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
@@ -111,7 +110,6 @@ export default function Dashboard() {
     label: "Sangat Sehat",
     textClass: "text-emerald-600 dark:text-emerald-400",
     bgClass: "bg-emerald-600",
-    borderClass: "border-emerald-200",
   };
   let showAlertBanner = false;
 
@@ -120,7 +118,6 @@ export default function Dashboard() {
       label: "Waspada / Boros",
       textClass: "text-rose-600 dark:text-rose-400",
       bgClass: "bg-rose-600",
-      borderClass: "border-rose-200",
     };
     showAlertBanner = true;
   } else if (savingsRate < 20) {
@@ -128,7 +125,6 @@ export default function Dashboard() {
       label: "Cukup Sehat",
       textClass: "text-amber-500",
       bgClass: "bg-amber-500",
-      borderClass: "border-amber-200",
     };
   }
 
@@ -149,6 +145,11 @@ export default function Dashboard() {
     name: key,
     value: categoryMap[key],
   }));
+
+  // URUTKAN DOMPET: Dari Saldo Terbesar ke Terkecil, lalu batasi maksimal 4
+  const sortedWallets = [...wallets]
+    .sort((a, b) => (parseFloat(b.balance) || 0) - (parseFloat(a.balance) || 0))
+    .slice(0, 4);
 
   return (
     <div className="space-y-6">
@@ -234,7 +235,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Saldo Per Dompet */}
+      {/* Saldo Per Dompet (Maksimal 4, Urut Terbesar ke Terkecil) */}
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
@@ -242,7 +243,7 @@ export default function Dashboard() {
               size={18}
               className="text-blue-600 dark:text-blue-400"
             />
-            Saldo Per Dompet / Rekening
+            Saldo Rekening 
           </h3>
           <Link
             to="/wallets"
@@ -252,20 +253,26 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {wallets.map((w) => (
-            <div
-              key={w.id}
-              className="p-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl space-y-1"
-            >
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                {w.name}
-              </p>
-              <p className="text-base font-extrabold text-gray-900 dark:text-white">
-                Rp {(parseFloat(w.balance) || 0).toLocaleString("id-ID")}
-              </p>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          {sortedWallets.length === 0 ? (
+            <p className="text-xs text-gray-400 py-4 col-span-full text-center">
+              Belum ada dompet terdaftar.
+            </p>
+          ) : (
+            sortedWallets.map((w) => (
+              <div
+                key={w.id}
+                className="p-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl space-y-1"
+              >
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">
+                  {w.name}
+                </p>
+                <p className="text-base font-extrabold text-gray-900 dark:text-white">
+                  Rp {(parseFloat(w.balance) || 0).toLocaleString("id-ID")}
+                </p>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -360,14 +367,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* INSIGHTS & ANALISIS KESEHATAN KEUANGAN WITH ALERT SYSTEM */}
+      {/* Insights */}
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
         <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
           <Lightbulb size={18} className="text-amber-500" />
           Insights & Analisis Kesehatan Keuangan
         </h3>
 
-        {/* ALERT BANNER MERAH JIKA BOROS (< 10%) */}
         {showAlertBanner && (
           <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-xl flex items-center gap-3 text-rose-700 dark:text-rose-400">
             <AlertTriangle
@@ -419,7 +425,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* TRANSAKSI TERAKHIR */}
+      {/* Transaksi Terakhir */}
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
