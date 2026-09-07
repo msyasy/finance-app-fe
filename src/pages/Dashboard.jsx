@@ -10,6 +10,8 @@ import {
   CreditCard,
   PieChart as PieIcon,
   BarChart3,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
@@ -104,6 +106,32 @@ export default function Dashboard() {
       ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100)
       : 0;
 
+  // Logika Status & Warna Alert
+  let statusBadge = {
+    label: "Sangat Sehat",
+    textClass: "text-emerald-600 dark:text-emerald-400",
+    bgClass: "bg-emerald-600",
+    borderClass: "border-emerald-200",
+  };
+  let showAlertBanner = false;
+
+  if (savingsRate < 10) {
+    statusBadge = {
+      label: "Waspada / Boros",
+      textClass: "text-rose-600 dark:text-rose-400",
+      bgClass: "bg-rose-600",
+      borderClass: "border-rose-200",
+    };
+    showAlertBanner = true;
+  } else if (savingsRate < 20) {
+    statusBadge = {
+      label: "Cukup Sehat",
+      textClass: "text-amber-500",
+      bgClass: "bg-amber-500",
+      borderClass: "border-amber-200",
+    };
+  }
+
   // Pie Chart Data
   const categoryMap = {};
   currentMonthTx
@@ -124,7 +152,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* BANNER DENGAN KARTU SEJAJAR HORIZONTAL */}
+      {/* HEADER & RINGKASAN SALDO SEJAJAR */}
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6">
         {/* Kiri: Teks Sapaan */}
         <div className="shrink-0">
@@ -140,7 +168,7 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Kanan: 4 Kartu Ringkasan Dikecilkan & Sejajar */}
+        {/* Kanan: 4 Kartu Ringkasan Sejajar */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full xl:w-auto flex-1">
           {/* Total Saldo */}
           <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2">
@@ -193,7 +221,9 @@ export default function Dashboard() {
               <p className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">
                 Saving Rate
               </p>
-              <h3 className="text-xs font-black text-amber-500 mt-0.5">
+              <h3
+                className={`text-xs font-black mt-0.5 ${statusBadge.textClass}`}
+              >
                 {savingsRate}%
               </h3>
             </div>
@@ -330,26 +360,41 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Insights */}
+      {/* INSIGHTS & ANALISIS KESEHATAN KEUANGAN WITH ALERT SYSTEM */}
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
         <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
           <Lightbulb size={18} className="text-amber-500" />
           Insights & Analisis Kesehatan Keuangan
         </h3>
 
+        {/* ALERT BANNER MERAH JIKA BOROS (< 10%) */}
+        {showAlertBanner && (
+          <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-xl flex items-center gap-3 text-rose-700 dark:text-rose-400">
+            <AlertTriangle
+              size={18}
+              className="shrink-0 text-rose-600 dark:text-rose-400"
+            />
+            <p className="text-xs font-semibold leading-relaxed">
+              <strong>Peringatan Finansial:</strong> Savings rate kamu bulan ini
+              hanya <strong>{savingsRate}%</strong> (kurang dari batas aman
+              20%). Pengeluaran kamu hampir menguras seluruh pemasukan bulanan!
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 bg-gray-50 dark:bg-slate-800/40 rounded-xl border border-gray-100 dark:border-slate-800 space-y-2">
-            <div className="flex justify-between text-xs font-semibold">
+            <div className="flex justify-between items-center text-xs font-semibold">
               <span className="text-gray-600 dark:text-gray-300">
                 Savings Rate Bulan Ini
               </span>
-              <span className="text-blue-600 dark:text-blue-400">
-                {savingsRate}%
+              <span className={`font-bold ${statusBadge.textClass}`}>
+                {savingsRate}% ({statusBadge.label})
               </span>
             </div>
-            <div className="w-full h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div className="w-full h-2.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
-                className="h-full bg-blue-600 transition-all duration-500"
+                className={`h-full transition-all duration-500 ${statusBadge.bgClass}`}
                 style={{ width: `${Math.min(Math.max(savingsRate, 0), 100)}%` }}
               ></div>
             </div>
@@ -374,7 +419,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Transaksi Terakhir */}
+      {/* TRANSAKSI TERAKHIR */}
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
