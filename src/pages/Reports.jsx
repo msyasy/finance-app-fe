@@ -1,44 +1,47 @@
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import React, { useEffect, useState } from "react";
+import { 
+  FileSpreadsheet, 
+  FileText, 
+  Download, 
+  Calendar, 
+  Wallet, 
+  Filter,
+  CheckCircle2
+} from "lucide-react";
 import API from "../services/api";
+import toast from "react-hot-toast";
+
+// Import Library Ekspor
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 export default function Reports() {
   const [transactions, setTransactions] = useState([]);
   const [wallets, setWallets] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // Filter tanggal laporan
+  // Filter State
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [selectedWallet, setSelectedWallet] = useState("");
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      let url = "/transactions?page=1&limit=500";
-      if (startDate && endDate) {
-        url += `&start_date=${startDate}&end_date=${endDate}`;
-      }
-
       const [txRes, walletRes] = await Promise.all([
-        API.get(url),
-        API.get("/wallets"),
+        API.get("/transactions?page=1&limit=1000").catch(() => null),
+        API.get("/wallets").catch(() => null),
       ]);
 
-      const fetchedTx =
-        txRes.data?.data ||
-        txRes.data?.transactions ||
-        (Array.isArray(txRes.data) ? txRes.data : []);
-
-      const fetchedWallets =
-        walletRes.data?.data ||
-        walletRes.data?.wallets ||
-        (Array.isArray(walletRes.data) ? walletRes.data : []);
-
-      setTransactions(fetchedTx);
-      setWallets(fetchedWallets);
+      if (txRes?.data) {
+        setTransactions(txRes.data.data || txRes.data.transactions || []);
+      }
+      if (walletRes?.data) {
+        setWallets(walletRes.data.data || walletRes.data.wallets || []);
+      }
     } catch (err) {
-      console.error("Gagal memuat laporan:", err);
-      toast.error("Gagal memuat data laporan dari server");
+      console.error("Gagal memuat data laporan", err);
     } finally {
       setLoading(false);
     }
@@ -46,176 +49,234 @@ export default function Reports() {
 
   useEffect(() => {
     fetchData();
-  }, [startDate, endDate]);
+  }, []);
 
-  // Kalkulasi total laporan
-  const totalIncome = transactions
-    .filter((t) => t.type === "income")
-    .reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+  // Filter Data Transaksi Sesuai Input Parameter
+  const filteredData = transactions.filter((tx) => {
+    const txDate = new Date(tx.created_at || tx.date);
 
-  const totalExpense = transactions
-    .filter((t) => t.type === "expense")
-    .reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
-
-  const netBalance = totalIncome - totalExpense;
-
-  // Fitur Download CSV Laporan
-  const handleExportCSV = () => {
-    if (transactions.length === 0) {
-      return toast.error("Tidak ada data transaksi untuk diekspor");
+    let matchDate = true;
+    if (startDate) {
+      matchDate = matchDate && txDate >= new Date(startDate);
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      matchDate = matchDate && txDate <= end;
     }
 
-    let csvContent = "data:text/csv;charset=utf-8,ID,Tanggal,Tipe,Nominal,Catatan\n";
-    transactions.forEach((t) => {
-      const date = t.created_at || t.date || "";
-      const row = [t.id, date, t.type, t.amount, `"${t.notes || ""}"`].join(",");
-      csvContent += row + "\n";
-    });
+    let matchWallet = true;
+    if (selectedWallet) {
+      matchWallet = String(tx.wallet_id) === String(selectedWallet);
+    }
 
-    const encodedUri = encodeURI(csvContent);
+    return matchDate && matchWallet;
+  });
+
+  // Format Data untuk Ekspor
+  const getPreparedData = () => {
+    return filteredData.map((tx, idx) => ({
+      No: idx + 1,
+      Tanggal: new Date(tx.created_at || tx.date).toLocaleDateString("id-ID"),
+      Dompet: tx.wallet?.name || "N/A",
+      Tipe: tx.type === "income" ? "Pemasukan" : "Pengeluaran",
+      Kategori: tx.category?.name || "N/A",
+      Nominal: parseFloat(tx.amount) || 0,
+      Catatan: tx.note || "-",
+    }));
+  };
+
+  // 1. EKSPOR KE CSV
+  const exportToCSV = () => {
+    const data = getPreparedData();
+    if (data.length === 0) return toast.error("Tidak ada data untuk diekspor!");
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
+    const blob = new Blob([csvOutput], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `laporan_keuangan_${startDate || "semua"}_sd_${endDate || "sekarang"}.csv`);
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `Laporan_Keuangan_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    toast.success("Laporan berhasil diunduh dalam format CSV!");
+    toast.success("Berhasil mengekspor file CSV!");
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "-";
-    return new Intl.DateTimeFormat("id-ID", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    }).format(new Date(dateString));
+  // 2. EKSPOR KE EXCEL (.xlsx)
+  const exportToExcel = () => {
+    const data = getPreparedData();
+    if (data.length === 0) return toast.error("Tidak ada data untuk diekspor!");
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Keuangan");
+    XLSX.writeFile(workbook, `Laporan_Keuangan_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success("Berhasil mengekspor file Excel!");
+  };
+
+  // 3. EKSPOR KE PDF
+  const exportToPDF = () => {
+    const data = getPreparedData();
+    if (data.length === 0) return toast.error("Tidak ada data untuk diekspor!");
+
+    const doc = new jsPDF();
+
+    // Judul Dokument
+    doc.setFontSize(16);
+    doc.text("Laporan Keuangan - LapKeu.App", 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString("id-ID")}`, 14, 22);
+
+    // Dynamic Table
+    const tableColumn = ["No", "Tanggal", "Dompet", "Tipe", "Kategori", "Nominal (Rp)", "Catatan"];
+    const tableRows = data.map((item) => [
+      item.No,
+      item.Tanggal,
+      item.Dompet,
+      item.Tipe,
+      item.Kategori,
+      item.Nominal.toLocaleString("id-ID"),
+      item.Catatan,
+    ]);
+
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: 28,
+      theme: "grid",
+      headStyles: { fillColor: [37, 99, 235] },
+      styles: { fontSize: 8 },
+    });
+
+    doc.save(`Laporan_Keuangan_${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast.success("Berhasil mengekspor file PDF!");
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-            Laporan & Ekspor Data
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Unduh rekapitulasi transaksi dan analisis laporan keuangan
-          </p>
-        </div>
-        <button
-          onClick={handleExportCSV}
-          className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer"
-        >
-          📥 Unduh CSV Laporan
-        </button>
+    <div className="space-y-6">
+      {/* Banner Top */}
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+          <FileSpreadsheet size={24} className="text-blue-600 dark:text-blue-400" />
+          Laporan & Ekspor Data
+        </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          Unduh dokumen pembukuan keuangan kamu dalam format CSV, Excel, atau PDF.
+        </p>
       </div>
 
-      {/* Filter Rentang Tanggal */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 space-y-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white">
-          Filter Periode Laporan
+      {/* Filter Options */}
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+        <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
+          <Filter size={18} className="text-blue-500" />
+          <span>Filter Periode & Dompet</span>
         </h3>
-        <div className="flex flex-wrap items-center gap-3 text-xs">
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-gray-400 mb-1">Dari Tanggal</label>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Tanggal Mulai</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="p-2 border border-gray-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 outline-none"
+              className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
+
           <div>
-            <label className="block text-gray-400 mb-1">Sampai Tanggal</label>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Tanggal Akhir</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="p-2 border border-gray-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 outline-none"
+              className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
-          {(startDate || endDate) && (
-            <button
-              onClick={() => {
-                setStartDate("");
-                setEndDate("");
-              }}
-              className="mt-5 text-red-500 hover:underline font-semibold"
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Filter Dompet</label>
+            <select
+              value={selectedWallet}
+              onChange={(e) => setSelectedWallet(e.target.value)}
+              className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
             >
-              Reset Filter
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Ringkasan Statistik Laporan */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
-          <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider">
-            Total Pemasukan Periode Ini
-          </p>
-          <p className="text-xl font-black text-green-600 dark:text-green-400 mt-1">
-            + Rp {totalIncome.toLocaleString("id-ID")}
-          </p>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
-          <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider">
-            Total Pengeluaran Periode Ini
-          </p>
-          <p className="text-xl font-black text-red-600 dark:text-red-400 mt-1">
-            - Rp {totalExpense.toLocaleString("id-ID")}
-          </p>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
-          <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider">
-            Net Surplus / Defisit
-          </p>
-          <p className={`text-xl font-black mt-1 ${netBalance >= 0 ? "text-blue-600" : "text-amber-500"}`}>
-            Rp {netBalance.toLocaleString("id-ID")}
-          </p>
-        </div>
-      </div>
-
-      {/* Tabel Preview Rekap Transaksi */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 space-y-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white">
-          Preview Data Transaksi Laporan ({transactions.length} item)
-        </h3>
-
-        {loading ? (
-          <p className="text-gray-400 text-center py-10 text-xs">Memuat laporan...</p>
-        ) : transactions.length === 0 ? (
-          <p className="text-gray-400 text-center py-10 text-xs">Tidak ada data transaksi pada periode ini.</p>
-        ) : (
-          <div className="divide-y divide-gray-100 dark:divide-slate-800 max-h-96 overflow-y-auto">
-            {transactions.map((t) => {
-              const isIncome = t.type === "income";
-              return (
-                <div key={t.id} className="py-3 flex justify-between items-center text-xs">
-                  <div>
-                    <p className="font-semibold text-gray-800 dark:text-gray-100">
-                      {t.notes || "Transaksi"}
-                    </p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">
-                      {formatDate(t.created_at || t.date)}
-                    </p>
-                  </div>
-                  <span
-                    className={`font-bold ${
-                      isIncome ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                    }`}
-                  >
-                    {isIncome ? "+" : "-"} Rp {parseFloat(t.amount).toLocaleString("id-ID")}
-                  </span>
-                </div>
-              );
-            })}
+              <option value="">Semua Dompet</option>
+              {wallets.map((w) => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </select>
           </div>
-        )}
+        </div>
+      </div>
+
+      {/* Action Buttons & Preview */}
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-800 pb-4">
+          <div>
+            <h3 className="text-base font-bold text-gray-800 dark:text-white">Opsi Unduh Dokumen</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Ditemukan <span className="font-bold text-blue-600 dark:text-blue-400">{filteredData.length}</span> data transaksi siap diekspor.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={exportToCSV}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <Download size={15} /> CSV
+            </button>
+
+            <button
+              onClick={exportToExcel}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <FileSpreadsheet size={15} /> Excel (.xlsx)
+            </button>
+
+            <button
+              onClick={exportToPDF}
+              className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <FileText size={15} /> PDF
+            </button>
+          </div>
+        </div>
+
+        {/* Mini Preview Table */}
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-gray-700 dark:text-gray-300">Pratinjau Data (10 Terbaru)</p>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-gray-600 dark:text-gray-300">
+              <thead className="bg-gray-50 dark:bg-slate-800/60 uppercase text-[10px] text-gray-400 font-bold">
+                <tr>
+                  <th className="p-3 rounded-l-xl">Tanggal</th>
+                  <th className="p-3">Dompet</th>
+                  <th className="p-3">Kategori</th>
+                  <th className="p-3">Catatan</th>
+                  <th className="p-3 text-right rounded-r-xl">Nominal</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                {filteredData.slice(0, 10).map((tx) => (
+                  <tr key={tx.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/30">
+                    <td className="p-3 font-medium">
+                      {new Date(tx.created_at || tx.date).toLocaleDateString("id-ID")}
+                    </td>
+                    <td className="p-3">{tx.wallet?.name || "N/A"}</td>
+                    <td className="p-3">{tx.category?.name || "N/A"}</td>
+                    <td className="p-3">{tx.note || "-"}</td>
+                    <td className={`p-3 text-right font-extrabold ${tx.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                      {tx.type === "income" ? "+" : "-"} Rp {(parseFloat(tx.amount) || 0).toLocaleString("id-ID")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );
