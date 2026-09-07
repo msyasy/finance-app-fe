@@ -1,49 +1,43 @@
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import React, { useEffect, useState } from "react";
+import { 
+  PieChart, 
+  Pencil, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Plus,
+  Coins
+} from "lucide-react";
 import API from "../services/api";
+import toast from "react-hot-toast";
 
 export default function Budgets() {
   const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // Form state
-  const [categoryId, setCategoryId] = useState("");
+  // Modal Edit Budget State
+  const [editCategory, setEditCategory] = useState(null);
   const [budgetLimit, setBudgetLimit] = useState("");
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch kategori & transaksi bulan ini untuk kalkulasi pemakaian
       const [catRes, txRes] = await Promise.all([
-        API.get("/categories"),
-        API.get("/transactions?page=1&limit=100"),
+        API.get("/categories").catch(() => null),
+        API.get("/transactions?page=1&limit=200").catch(() => null),
       ]);
 
-      const fetchedCategories =
-        catRes.data?.data ||
-        catRes.data?.categories ||
-        (Array.isArray(catRes.data) ? catRes.data : []);
+      if (catRes?.data) {
+        const cList = catRes.data.data || catRes.data.categories || [];
+        // Filter khusus kategori Pengeluaran (Expense)
+        setCategories(cList.filter((c) => c.type === "expense"));
+      }
 
-      const fetchedTx =
-        txRes.data?.data ||
-        txRes.data?.transactions ||
-        (Array.isArray(txRes.data) ? txRes.data : []);
-
-      // Filter hanya kategori pengeluaran untuk budget
-      const expenseCats = fetchedCategories.filter(
-        (c) => c.type?.toLowerCase() === "expense"
-      );
-
-      setCategories(expenseCats);
-      setTransactions(fetchedTx);
-
-      if (expenseCats.length > 0 && !categoryId) {
-        setCategoryId(expenseCats[0].id);
+      if (txRes?.data) {
+        setTransactions(txRes.data.data || txRes.data.transactions || []);
       }
     } catch (err) {
-      console.error("Gagal memuat data budget:", err);
-      toast.error("Gagal memuat data anggaran");
+      console.error("Gagal memuat data budget", err);
     } finally {
       setLoading(false);
     }
@@ -53,167 +47,184 @@ export default function Budgets() {
     fetchData();
   }, []);
 
-  const formatAmountInput = (value) => {
-    const rawValue = value.replace(/\D/g, "");
-    if (!rawValue) return "";
-    return new Intl.NumberFormat("id-ID").format(rawValue);
-  };
-
-  const handleSaveBudget = async (e) => {
-    e.preventDefault();
-    if (!categoryId) return toast.error("Pilih kategori terlebih dahulu");
-
-    const cleanLimit = parseFloat(budgetLimit.replace(/\./g, ""));
-    if (isNaN(cleanLimit) || cleanLimit < 0) {
-      return toast.error("Masukkan nominal limit yang valid");
-    }
-
-    try {
-      // Endpoint update budget limit kategori
-      await API.put(`/categories/${categoryId}/budget`, {
-        budget_limit: cleanLimit,
-      });
-
-      toast.success("Batas anggaran berhasil diperbarui!");
-      setBudgetLimit("");
-      fetchData();
-    } catch (err) {
-      toast.error(err.response?.data?.error || "Gagal menyimpan batas anggaran");
-    }
-  };
-
-  // Filter transaksi bulan ini
+  // Hitung total pengeluaran bulan ini per kategori
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  const currentMonthTx = transactions.filter((t) => {
-    const rawDate = t.created_at || t.date;
-    if (!rawDate) return false;
-    const txDate = new Date(rawDate);
+  const currentMonthExpenses = transactions.filter((t) => {
+    const d = new Date(t.created_at || t.date);
     return (
-      txDate.getMonth() === currentMonth &&
-      txDate.getFullYear() === currentYear &&
-      t.type === "expense"
+      t.type === "expense" &&
+      d.getMonth() === currentMonth &&
+      d.getFullYear() === currentYear
     );
   });
 
+  // Buka Modal Edit Budget Limit
+  const handleOpenEdit = (cat) => {
+    setEditCategory(cat);
+    setBudgetLimit(cat.budget_limit || cat.budget || "");
+  };
+
+  // Submit Update Budget Limit
+  const handleUpdateBudget = async (e) => {
+    e.preventDefault();
+    if (!editCategory) return;
+
+    try {
+      await API.put(`/categories/${editCategory.id}`, {
+        name: editCategory.name,
+        type: editCategory.type,
+        budget_limit: parseFloat(budgetLimit) || 0,
+      });
+
+      toast.success(`Batas anggaran untuk ${editCategory.name} berhasil diperbarui!`);
+      setEditCategory(null);
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Gagal memperbarui anggaran");
+    }
+  };
+
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-          Budget Planner (Perencanaan Anggaran)
+    <div className="space-y-6">
+      {/* Banner Top */}
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+          <PieChart size={24} className="text-blue-600 dark:text-blue-400" />
+          Budget Planner
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Kontrol batas pengeluaran bulanan agar keuangan tetap sehat
+          Tetapkan batas pengeluaran bulanan per kategori untuk menjaga kondisi keuangan tetap sehat.
         </p>
       </div>
 
-      {/* Form Atur Budget */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 transition-colors space-y-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white">
-          Atur Batas Anggaran Kategori
-        </h3>
-        <form onSubmit={handleSaveBudget} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <select
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
-            required
-          >
-            {categories.length === 0 ? (
-              <option value="">Belum ada kategori pengeluaran</option>
-            ) : (
-              categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))
-            )}
-          </select>
+      {/* Grid List Kategori & Progress Anggaran */}
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+        <h3 className="text-base font-bold text-gray-800 dark:text-white">Batas Anggaran Bulanan</h3>
 
-          <input
-            type="text"
-            placeholder="Batas Limit Bulanan (Rp)"
-            required
-            value={budgetLimit}
-            onChange={(e) => setBudgetLimit(formatAmountInput(e.target.value))}
-            className="p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
-          />
+        <div className="space-y-3">
+          {categories.length === 0 ? (
+            <div className="text-center py-10">
+              <Coins size={32} className="mx-auto text-gray-400 mb-2" />
+              <p className="text-xs text-gray-400">Belum ada kategori pengeluaran.</p>
+            </div>
+          ) : (
+            categories.map((cat) => {
+              // Hitung akumulasi terpakai untuk kategori ini di bulan berjalan
+              const spent = currentMonthExpenses
+                .filter((t) => String(t.category_id) === String(cat.id))
+                .reduce((sum, curr) => sum + (parseFloat(curr.amount) || 0), 0);
 
-          <button
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl p-2.5 text-xs transition cursor-pointer"
-          >
-            Simpan Anggaran
-          </button>
-        </form>
-      </div>
-
-      {/* Daftar Monitoring Anggaran */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 space-y-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white">
-          Monitoring Pengeluaran Bulan Ini
-        </h3>
-
-        {loading ? (
-          <p className="text-gray-400 text-center py-8 text-xs">Memuat data anggaran...</p>
-        ) : categories.length === 0 ? (
-          <p className="text-gray-400 text-center py-8 text-xs">Belum ada kategori pengeluaran.</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {categories.map((cat) => {
-              // Hitung total pengeluaran untuk kategori ini di bulan berjalan
-              const spent = currentMonthTx
-                .filter((t) => Number(t.category_id) === Number(cat.id))
-                .reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
-
-              const limit = parseFloat(cat.budget_limit || 0);
-              const percentage = limit > 0 ? Math.min(Math.round((spent / limit) * 100), 100) : 0;
+              const limit = parseFloat(cat.budget_limit || cat.budget) || 0;
+              const percent = limit > 0 ? Math.min(Math.round((spent / limit) * 100), 100) : 0;
               const isOver = limit > 0 && spent > limit;
 
               return (
                 <div
                   key={cat.id}
-                  className="p-4 rounded-2xl border border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 space-y-3"
+                  className="p-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl space-y-2 hover:border-gray-200 dark:hover:border-slate-700 transition"
                 >
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-sm text-gray-800 dark:text-white">
-                      {cat.name}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Limit: Rp {limit.toLocaleString("id-ID")}
-                    </span>
-                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        {cat.name}
+                        {isOver && (
+                          <span className="flex items-center gap-1 text-[10px] text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 px-2 py-0.5 rounded-full font-semibold">
+                            <AlertTriangle size={12} /> Melebihi Limit
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Terpakai:{" "}
+                        <span className={`font-semibold ${isOver ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                          Rp {spent.toLocaleString("id-ID")}
+                        </span>
+                      </p>
+                    </div>
 
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-600 dark:text-gray-300">
-                      Terpakai:{" "}
-                      <strong className={isOver ? "text-red-500 font-bold" : "text-gray-800 dark:text-gray-100"}>
-                        Rp {spent.toLocaleString("id-ID")}
-                      </strong>
-                    </span>
-                    <span className={`font-bold ${isOver ? "text-red-500" : "text-blue-600"}`}>
-                      {percentage}%
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-[10px] text-gray-400 uppercase font-semibold">Limit</p>
+                        <p className="text-xs font-extrabold text-gray-800 dark:text-white">
+                          {limit > 0 ? `Rp ${limit.toLocaleString("id-ID")}` : "Belum diatur"}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => handleOpenEdit(cat)}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition cursor-pointer"
+                        title="Set Batas Anggaran"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="w-full bg-gray-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-300 ${
-                        isOver ? "bg-red-500" : percentage > 80 ? "bg-amber-500" : "bg-blue-600"
-                      }`}
-                      style={{ width: `${percentage}%` }}
-                    ></div>
-                  </div>
+                  {limit > 0 && (
+                    <div className="w-full bg-gray-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${
+                          isOver
+                            ? "bg-rose-500"
+                            : percent > 80
+                            ? "bg-amber-500"
+                            : "bg-blue-600"
+                        }`}
+                        style={{ width: `${percent}%` }}
+                      ></div>
+                    </div>
+                  )}
                 </div>
               );
-            })}
-          </div>
-        )}
+            })
+          )}
+        </div>
       </div>
+
+      {/* Modal Edit Budget Limit */}
+      {editCategory && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-xl">
+            <h4 className="text-base font-bold text-gray-900 dark:text-white">
+              Atur Anggaran: {editCategory.name}
+            </h4>
+
+            <form onSubmit={handleUpdateBudget} className="space-y-3">
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  Batas Pengeluaran Bulanan (Rp)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Contoh: 1500000"
+                  value={budgetLimit}
+                  onChange={(e) => setBudgetLimit(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditCategory(null)}
+                  className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition"
+                >
+                  Simpan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
