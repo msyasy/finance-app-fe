@@ -81,7 +81,7 @@ export default function Transactions() {
     }
   };
 
-  // 2. Fetch Transactions (Safe Handling for Backend 500 Panic)
+  // 2. Fetch Transactions
   const fetchTransactions = async () => {
     try {
       let url = `/transactions?page=${page}&limit=10`;
@@ -110,12 +110,8 @@ export default function Transactions() {
           totalPages: txRes.data.pagination.total_pages || 1,
         });
       }
-    } catch (err) {
-      console.error("Error fetching transactions:", err);
+    } catch {
       setTransactions([]);
-      if (err.response?.status === 500) {
-        toast.error("Terjadi masalah internal server pada data transaksi");
-      }
     }
   };
 
@@ -171,11 +167,12 @@ export default function Transactions() {
       setAmount("");
       setNotes("");
 
-      // Reset filter tabel
+      // Reset filter tabel agar transaksi baru pasti langsung terlihat
       setSearchQuery("");
       setSelectedWalletFilter("all");
       setSelectedCategoryFilter("all");
 
+      // Reset ke halaman 1 & muat ulang mutasi + saldo dompet
       if (page !== 1) {
         setPage(1);
       } else {
