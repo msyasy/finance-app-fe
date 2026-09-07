@@ -1,21 +1,24 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-// 1. Penentuan Dynamic Base URL
+// 1. Tentukan URL Backend dengan HTTPS Wajib
 const isLocal = import.meta.env.DEV;
 
-// Prioritaskan dari .env VITE_API_URL, jika tidak ada baru gunakan fallback
 const defaultBaseURL = isLocal
   ? 'http://localhost:8080/api'
   : 'https://finance-app-be-production.up.railway.app/api';
 
-const baseURL = import.meta.env.VITE_API_URL || defaultBaseURL;
+// Bersihkan trailing slash jika ada
+let baseURL = import.meta.env.VITE_API_URL || defaultBaseURL;
+if (baseURL.endsWith('/')) {
+  baseURL = baseURL.slice(0, -1);
+}
 
 const API = axios.create({
   baseURL,
 });
 
-// 2. Request Interceptor: Menempelkan Token JWT ke setiap Request
+// 2. Request Interceptor: Tempelkan Token JWT
 API.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -27,7 +30,7 @@ API.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 3. Response Interceptor: Auto Logout jika Token Expired / Invalid (Error 401)
+// 3. Response Interceptor: Auto Logout jika 401
 API.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -44,6 +47,7 @@ API.interceptors.response.use(
   }
 );
 
+// --- AUTH SERVICES (Pastikan diawali dengan slash dan tidak ada double slash) ---
 export const loginUser = (data) => API.post('/login', data);
 export const registerUser = (data) => API.post('/register', data);
 export const forgotPassword = (data) => API.post('/forgot-password', data);
