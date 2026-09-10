@@ -35,7 +35,7 @@ export default function Sidebar({ handleLogout }) {
           </div>
           <div>
             <h1 className="text-base font-black text-gray-900 dark:text-white tracking-wide leading-none">
-              LapKeu<span className="text-blue-600 dark:text-blue-400">.App</span>
+              LapKeu<span className="text-blue-600 dark:text-blue-400">.msyasy.xyz</span>
             </h1>
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 font-medium">
               Financial System
