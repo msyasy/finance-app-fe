@@ -25,7 +25,7 @@ export default function Wallets() {
   const fetchWallets = async () => {
     setLoading(true);
     try {
-      const res = await API.get("/wallets");
+      const res = await API.get("/wallets").catch(() => null);
       if (res?.data) {
         setWallets(res.data.data || res.data.wallets || []);
       }

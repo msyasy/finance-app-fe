@@ -155,7 +155,9 @@ export default function Dashboard() {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-3">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-xs font-semibold text-gray-400">Memuat data keuangan...</p>
+        <p className="text-xs font-semibold text-gray-400">
+          Memuat data keuangan...
+        </p>
       </div>
     );
   }
@@ -252,7 +254,7 @@ export default function Dashboard() {
               size={18}
               className="text-blue-600 dark:text-blue-400"
             />
-            Saldo Rekening 
+            Saldo Rekening
           </h3>
           <Link
             to="/wallets"

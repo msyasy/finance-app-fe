@@ -15,7 +15,7 @@ export default function CashFlow() {
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      const res = await API.get("/transactions?page=1&limit=500");
+      const res = await API.get("/transactions?page=1&limit=500").catch(() => null);
       if (res?.data) {
         setTransactions(res.data.data || res.data.transactions || []);
       }
