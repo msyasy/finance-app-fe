@@ -48,10 +48,10 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const [walletRes, catRes, txRes, cfRes] = await Promise.all([
-        API.get("/wallets"),
-        API.get("/categories"),
-        API.get("/transactions?page=1&limit=1000"),
-        API.get("/transactions/cashflow"),
+        API.get("/wallets").catch(() => null),
+        API.get("/categories").catch(() => null),
+        API.get("/transactions?page=1&limit=1000").catch(() => null),
+        API.get("/transactions/cashflow").catch(() => null),
       ]);
 
       if (walletRes?.data) {
