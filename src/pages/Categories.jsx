@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { 
-  Tag, 
-  Plus, 
-  Trash2, 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  Tag,
+  Plus,
+  Trash2,
+  TrendingUp,
+  TrendingDown,
   AlertCircle,
-  Coins
+  Coins,
 } from "lucide-react";
 import API from "../services/api";
 import toast from "react-hot-toast";
@@ -83,15 +83,21 @@ export default function Categories() {
           Kelola Kategori
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Atur kelompok pengeluaran dan pemasukan untuk memudahkan klasifikasi riwayat transaksi.
+          Atur kelompok pengeluaran dan pemasukan untuk memudahkan klasifikasi
+          riwayat transaksi.
         </p>
       </div>
 
       {/* Form Tambah Kategori */}
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white">Tambah Kategori Baru</h3>
+        <h3 className="text-base font-bold text-gray-800 dark:text-white">
+          Tambah Kategori Baru
+        </h3>
 
-        <form onSubmit={handleAddCategory} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <form
+          onSubmit={handleAddCategory}
+          className="grid grid-cols-1 md:grid-cols-3 gap-3"
+        >
           <div>
             <select
               value={type}
@@ -135,14 +141,18 @@ export default function Categories() {
 
           <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
             {expenseCategories.length === 0 ? (
-              <p className="text-xs text-gray-400 py-6 text-center">Belum ada kategori pengeluaran.</p>
+              <p className="text-xs text-gray-400 py-6 text-center">
+                Belum ada kategori pengeluaran.
+              </p>
             ) : (
               expenseCategories.map((c) => (
                 <div
                   key={c.id}
                   className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl hover:border-gray-200 dark:hover:border-slate-700 transition"
                 >
-                  <span className="text-xs font-bold text-gray-800 dark:text-white">{c.name}</span>
+                  <span className="text-xs font-bold text-gray-800 dark:text-white">
+                    {c.name}
+                  </span>
                   <button
                     onClick={() => setDeleteTargetId(c.id)}
                     className="p-1.5 text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition cursor-pointer"
@@ -165,14 +175,18 @@ export default function Categories() {
 
           <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
             {incomeCategories.length === 0 ? (
-              <p className="text-xs text-gray-400 py-6 text-center">Belum ada kategori pemasukan.</p>
+              <p className="text-xs text-gray-400 py-6 text-center">
+                Belum ada kategori pemasukan.
+              </p>
             ) : (
               incomeCategories.map((c) => (
                 <div
                   key={c.id}
                   className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl hover:border-gray-200 dark:hover:border-slate-700 transition"
                 >
-                  <span className="text-xs font-bold text-gray-800 dark:text-white">{c.name}</span>
+                  <span className="text-xs font-bold text-gray-800 dark:text-white">
+                    {c.name}
+                  </span>
                   <button
                     onClick={() => setDeleteTargetId(c.id)}
                     className="p-1.5 text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition cursor-pointer"
@@ -193,10 +207,13 @@ export default function Categories() {
           <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-xl">
             <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
               <AlertCircle size={24} />
-              <h4 className="text-base font-bold text-gray-900 dark:text-white">Konfirmasi Hapus</h4>
+              <h4 className="text-base font-bold text-gray-900 dark:text-white">
+                Konfirmasi Hapus
+              </h4>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-              Apakah kamu yakin ingin menghapus kategori ini? Pastikan tidak ada transaksi aktif yang bergantung pada kategori ini.
+              Apakah kamu yakin ingin menghapus kategori ini? Pastikan tidak ada
+              transaksi aktif yang bergantung pada kategori ini.
             </p>
             <div className="flex items-center justify-end gap-2 pt-2">
               <button

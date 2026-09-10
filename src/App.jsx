@@ -5,6 +5,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register"; 
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Wallets from "./pages/Wallets";
@@ -27,7 +29,9 @@ export default function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} /> 
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Protected Routes (Harus Login) */}
         <Route element={<ProtectedRoute />}>
