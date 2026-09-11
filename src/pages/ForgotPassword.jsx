@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import API from "../services/api";
 
@@ -20,7 +20,7 @@ export default function ForgotPassword() {
       setEmail("");
     } catch (err) {
       setError(
-        err.response?.data?.error || "Gagal mengirim email reset password",
+        err.response?.data?.error || "Gagal mengirim email reset password"
       );
     } finally {
       setLoading(false);

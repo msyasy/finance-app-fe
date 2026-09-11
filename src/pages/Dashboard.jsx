@@ -77,13 +77,11 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
-  // Total Saldo
   const totalBalance = wallets.reduce(
     (acc, w) => acc + (parseFloat(w.balance) || 0),
     0,
   );
 
-  // Transaksi Bulan Ini
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
 
@@ -105,7 +103,6 @@ export default function Dashboard() {
       ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100)
       : 0;
 
-  // Logika Status & Warna Alert
   let statusBadge = {
     label: "Sangat Sehat",
     textClass: "text-emerald-600 dark:text-emerald-400",
@@ -128,7 +125,6 @@ export default function Dashboard() {
     };
   }
 
-  // Pie Chart Data
   const categoryMap = {};
   currentMonthTx
     .filter((tx) => tx.type === "expense")
@@ -146,7 +142,6 @@ export default function Dashboard() {
     value: categoryMap[key],
   }));
 
-  // URUTKAN DOMPET: Dari Saldo Terbesar ke Terkecil, lalu batasi maksimal 4
   const sortedWallets = [...wallets]
     .sort((a, b) => (parseFloat(b.balance) || 0) - (parseFloat(a.balance) || 0))
     .slice(0, 4);
@@ -163,12 +158,11 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* HEADER & RINGKASAN SALDO SEJAJAR */}
-      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6">
-        {/* Kiri: Teks Sapaan */}
+    <div className="space-y-4 sm:space-y-6">
+      {/* HEADER & RINGKASAN SALDO */}
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 sm:gap-6">
         <div className="shrink-0">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-white">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">
             Dashboard Keuangan
           </h1>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -180,76 +174,76 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Kanan: 4 Kartu Ringkasan Sejajar */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full xl:w-auto flex-1">
+        {/* 4 Kartu Ringkasan (1 kolom di HP, 2 kolom di tablet, 4 di desktop) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full xl:w-auto flex-1">
           {/* Total Saldo */}
-          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2">
-            <div>
-              <p className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">
+          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2 min-w-0">
+            <div className="min-w-0">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
                 Total Saldo
               </p>
-              <h3 className="text-xs font-black text-gray-900 dark:text-white mt-0.5 truncate">
+              <h3 className="text-xs sm:text-sm font-black text-gray-900 dark:text-white mt-0.5 truncate">
                 Rp {totalBalance.toLocaleString("id-ID")}
               </h3>
             </div>
-            <div className="w-7 h-7 rounded-lg bg-blue-100/60 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-              <Wallet size={14} />
+            <div className="w-8 h-8 rounded-lg bg-blue-100/60 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Wallet size={16} />
             </div>
           </div>
 
           {/* Pemasukan */}
-          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2">
-            <div>
-              <p className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">
+          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2 min-w-0">
+            <div className="min-w-0">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
                 Pemasukan
               </p>
-              <h3 className="text-xs font-black text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
+              <h3 className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
                 + Rp {totalIncome.toLocaleString("id-ID")}
               </h3>
             </div>
-            <div className="w-7 h-7 rounded-lg bg-emerald-100/60 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <TrendingUp size={14} />
+            <div className="w-8 h-8 rounded-lg bg-emerald-100/60 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <TrendingUp size={16} />
             </div>
           </div>
 
           {/* Pengeluaran */}
-          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2">
-            <div>
-              <p className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">
+          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2 min-w-0">
+            <div className="min-w-0">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
                 Pengeluaran
               </p>
-              <h3 className="text-xs font-black text-rose-600 dark:text-rose-400 mt-0.5 truncate">
+              <h3 className="text-xs sm:text-sm font-black text-rose-600 dark:text-rose-400 mt-0.5 truncate">
                 - Rp {totalExpense.toLocaleString("id-ID")}
               </h3>
             </div>
-            <div className="w-7 h-7 rounded-lg bg-rose-100/60 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-              <TrendingDown size={14} />
+            <div className="w-8 h-8 rounded-lg bg-rose-100/60 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+              <TrendingDown size={16} />
             </div>
           </div>
 
           {/* Saving Rate */}
-          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2">
-            <div>
-              <p className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">
+          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2 min-w-0">
+            <div className="min-w-0">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
                 Saving Rate
               </p>
               <h3
-                className={`text-xs font-black mt-0.5 ${statusBadge.textClass}`}
+                className={`text-xs sm:text-sm font-black mt-0.5 ${statusBadge.textClass}`}
               >
                 {savingsRate}%
               </h3>
             </div>
-            <div className="w-7 h-7 rounded-lg bg-amber-100/60 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center shrink-0">
-              <Percent size={14} />
+            <div className="w-8 h-8 rounded-lg bg-amber-100/60 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center shrink-0">
+              <Percent size={16} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Saldo Per Dompet (Maksimal 4, Urut Terbesar ke Terkecil) */}
-      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+      {/* Saldo Per Dompet */}
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
+          <h3 className="text-sm sm:text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
             <CreditCard
               size={18}
               className="text-blue-600 dark:text-blue-400"
@@ -273,12 +267,12 @@ export default function Dashboard() {
             sortedWallets.map((w) => (
               <div
                 key={w.id}
-                className="p-4 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl space-y-1"
+                className="p-3.5 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl space-y-1 min-w-0"
               >
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">
                   {w.name}
                 </p>
-                <p className="text-base font-extrabold text-gray-900 dark:text-white">
+                <p className="text-sm font-extrabold text-gray-900 dark:text-white truncate">
                   Rp {(parseFloat(w.balance) || 0).toLocaleString("id-ID")}
                 </p>
               </div>
@@ -288,15 +282,14 @@ export default function Dashboard() {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Arus Kas */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
-          <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
+          <h3 className="text-sm sm:text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
             <BarChart3 size={18} className="text-blue-600 dark:text-blue-400" />
             Tren Arus Kas (6 Bulan Terakhir)
           </h3>
 
-          <div className="h-64 w-full pt-2">
+          <div className="h-56 sm:h-64 w-full pt-2">
             {cashFlowData.length === 0 ? (
               <p className="text-xs text-gray-400 text-center py-20">
                 Data arus kas belum tersedia.
@@ -304,16 +297,16 @@ export default function Dashboard() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={cashFlowData}>
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} width={35} />
                   <Tooltip
                     formatter={(value) => [
                       `Rp ${Number(value).toLocaleString("id-ID")}`,
                       "",
                     ]}
-                    contentStyle={{ borderRadius: "12px", fontSize: "12px" }}
+                    contentStyle={{ borderRadius: "12px", fontSize: "11px" }}
                   />
-                  <Legend wrapperStyle={{ fontSize: "12px" }} />
+                  <Legend wrapperStyle={{ fontSize: "11px" }} />
                   <Bar
                     dataKey="income"
                     name="Pemasukan"
@@ -332,14 +325,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Pengeluaran Pie Chart */}
-        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
-          <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
+        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
+          <h3 className="text-sm sm:text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
             <PieIcon size={18} className="text-rose-500" />
             Pengeluaran Bulan Ini
           </h3>
 
-          <div className="h-64 w-full flex items-center justify-center">
+          <div className="h-56 sm:h-64 w-full flex items-center justify-center">
             {categoryPieData.length === 0 ? (
               <p className="text-xs text-gray-400 text-center">
                 Belum ada pengeluaran bulan ini.
@@ -351,8 +343,8 @@ export default function Dashboard() {
                     data={categoryPieData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={55}
-                    outerRadius={80}
+                    innerRadius={45}
+                    outerRadius={70}
                     paddingAngle={4}
                     dataKey="value"
                   >
@@ -368,9 +360,9 @@ export default function Dashboard() {
                       `Rp ${Number(value).toLocaleString("id-ID")}`,
                       "",
                     ]}
-                    contentStyle={{ borderRadius: "12px", fontSize: "12px" }}
+                    contentStyle={{ borderRadius: "12px", fontSize: "11px" }}
                   />
-                  <Legend wrapperStyle={{ fontSize: "11px" }} />
+                  <Legend wrapperStyle={{ fontSize: "10px" }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -379,22 +371,22 @@ export default function Dashboard() {
       </div>
 
       {/* Insights */}
-      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
-        <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
-          <Lightbulb size={18} className="text-amber-500" />
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
+        <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
+          <Lightbulb size={18} className="text-amber-500 shrink-0" />
           Insights & Analisis Kesehatan Keuangan
         </h3>
 
         {showAlertBanner && (
-          <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-xl flex items-center gap-3 text-rose-700 dark:text-rose-400">
+          <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-xl flex items-start sm:items-center gap-3 text-rose-700 dark:text-rose-400">
             <AlertTriangle
               size={18}
-              className="shrink-0 text-rose-600 dark:text-rose-400"
+              className="shrink-0 mt-0.5 sm:mt-0 text-rose-600 dark:text-rose-400"
             />
             <p className="text-xs font-semibold leading-relaxed">
               <strong>Peringatan Finansial:</strong> Savings rate kamu bulan ini
               hanya <strong>{savingsRate}%</strong> (kurang dari batas aman
-              20%). Pengeluaran kamu hampir menguras seluruh pemasukan bulanan!
+              20%).
             </p>
           </div>
         )}
@@ -437,9 +429,9 @@ export default function Dashboard() {
       </div>
 
       {/* Transaksi Terakhir */}
-      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
+          <h3 className="text-sm sm:text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
             <Receipt size={18} className="text-blue-600 dark:text-blue-400" />
             Transaksi Terakhir
           </h3>
@@ -459,7 +451,6 @@ export default function Dashboard() {
           ) : (
             transactions.slice(0, 5).map((tx) => {
               const isIncome = tx.type === "income";
-
               const catObj = categories.find(
                 (c) => String(c.id) === String(tx.category_id),
               );
@@ -486,37 +477,34 @@ export default function Dashboard() {
               return (
                 <div
                   key={tx.id}
-                  className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl"
+                  className="flex items-center justify-between p-3 sm:p-3.5 bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 rounded-xl gap-2 min-w-0"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                     <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 ${
                         isIncome
                           ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
                           : "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400"
                       }`}
                     >
                       {isIncome ? (
-                        <TrendingUp size={18} />
+                        <TrendingUp size={16} />
                       ) : (
-                        <TrendingDown size={18} />
+                        <TrendingDown size={16} />
                       )}
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-800 dark:text-white">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-gray-800 dark:text-white truncate">
                         {displayTitle}
                       </p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">
-                        {formattedDate} •{" "}
-                        <span className="font-medium text-gray-500 dark:text-gray-400">
-                          {walletName}
-                        </span>
+                      <p className="text-[10px] text-gray-400 mt-0.5 truncate">
+                        {formattedDate} • {walletName}
                       </p>
                     </div>
                   </div>
 
                   <p
-                    className={`text-xs font-extrabold ${
+                    className={`text-xs font-extrabold shrink-0 ${
                       isIncome
                         ? "text-emerald-600 dark:text-emerald-400"
                         : "text-rose-600 dark:text-rose-400"
