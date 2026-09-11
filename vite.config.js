@@ -15,6 +15,7 @@ export default defineConfig({
       manifest: {
         name: 'Lapkeu - Laporan Keuangan',
         short_name: 'LapKeu',
+        lang: 'id',
         description: 'Aplikasi Pengelola Keuangan',
         theme_color: '#0f172a',
         background_color: '#ffffff',
