@@ -54,7 +54,11 @@ export default function Categories() {
       setName("");
       fetchCategories();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal menambah kategori");
+      toast.error(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "Gagal menambah kategori",
+      );
     }
   };
 
@@ -67,7 +71,11 @@ export default function Categories() {
       setDeleteTargetId(null);
       fetchCategories();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal menghapus kategori");
+      toast.error(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "Gagal menghapus kategori",
+      );
     }
   };
 
