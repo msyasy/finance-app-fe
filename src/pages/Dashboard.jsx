@@ -52,9 +52,15 @@ export default function Dashboard() {
     setRegBioLoading(true);
     try {
       const res = await registerBiometrics();
-      toast.success(res?.message || "Biometrik (Passkey) berhasil didaftarkan!");
+      toast.success(
+        res?.message || "Biometrik (Passkey) berhasil didaftarkan!",
+      );
     } catch (err) {
-      toast.error(err.response?.data?.error || err.message || "Gagal mendaftarkan biometrik");
+      toast.error(
+        err.response?.data?.error ||
+          err.message ||
+          "Gagal mendaftarkan biometrik",
+      );
     } finally {
       setRegBioLoading(false);
     }

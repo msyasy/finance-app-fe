@@ -28,12 +28,13 @@ export default function Login() {
       }
 
       // 2. Simpan Data User
-      const userData =
-        resData?.user ||
+      const userData = resData?.user ||
         response.data?.user ||
         resData?.profile ||
-        (resData?.name ? resData : null) ||
-        { email, name: email.split("@")[0] };
+        (resData?.name ? resData : null) || {
+          email,
+          name: email.split("@")[0],
+        };
 
       localStorage.setItem("user", JSON.stringify(userData));
 
@@ -43,7 +44,7 @@ export default function Login() {
       setError(
         err.response?.data?.error ||
           err.response?.data?.message ||
-          "Login gagal, periksa email & password"
+          "Login gagal, periksa email & password",
       );
     } finally {
       setLoading(false);
@@ -52,7 +53,9 @@ export default function Login() {
 
   const handleBiometricLogin = async () => {
     if (!email.trim()) {
-      toast.error("Masukkan email akun kamu terlebih dahulu untuk login biometrik!");
+      toast.error(
+        "Masukkan email akun kamu terlebih dahulu untuk login biometrik!",
+      );
       return;
     }
 
@@ -72,9 +75,7 @@ export default function Login() {
       window.location.href = "/dashboard";
     } catch (err) {
       const msg =
-        err.response?.data?.error ||
-        err.message ||
-        "Login biometrik gagal";
+        err.response?.data?.error || err.message || "Login biometrik gagal";
       setError(msg);
       toast.error(msg);
     } finally {
@@ -154,8 +155,13 @@ export default function Login() {
               disabled={loading || bioLoading}
               className="w-full bg-gray-50 hover:bg-gray-100 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-slate-700 font-semibold p-2.5 rounded-xl transition duration-200 text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              <Fingerprint size={18} className="text-blue-600 dark:text-blue-400" />
-              {bioLoading ? "Memverifikasi Biometrik..." : "Masuk dengan Biometrik / Passkey"}
+              <Fingerprint
+                size={18}
+                className="text-blue-600 dark:text-blue-400"
+              />
+              {bioLoading
+                ? "Memverifikasi Biometrik..."
+                : "Masuk dengan Biometrik / Passkey"}
             </button>
           </div>
         )}
