@@ -223,7 +223,8 @@ export default function Categories() {
               </h4>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-              Apakah kamu yakin ingin menghapus kategori ini? Kategori akan dihapus tanpa menghilangkan riwayat transaksi kamu.
+              Apakah kamu yakin ingin menghapus kategori ini? Kategori akan
+              dihapus tanpa menghilangkan riwayat transaksi kamu.
             </p>
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
