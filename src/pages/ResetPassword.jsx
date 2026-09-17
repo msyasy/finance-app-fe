@@ -44,6 +44,12 @@ export default function ResetPassword() {
   };
 
   return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+      <div className="max-w-md w-full bg-white rounded-xl shadow-md p-8">
+        <h2 className="text-2xl font-bold text-slate-800 text-center mb-2">Buat Password Baru</h2>
+        <p className="text-sm text-slate-500 text-center mb-6">
+          Masukkan password baru untuk akun kamu.
+        </p>
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950 p-4 transition-colors duration-300">
       <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-8 space-y-6">
         <div className="text-center space-y-1">
@@ -56,18 +62,22 @@ export default function ResetPassword() {
         </div>
 
         {message && (
+          <div className="mb-4 p-3 bg-emerald-50 text-emerald-700 text-sm rounded-lg border border-emerald-200">
           <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-xs font-medium rounded-xl border border-emerald-200 dark:border-emerald-900/50">
             {message} Mengalihkan ke halaman login...
           </div>
         )}
 
         {error && (
+          <div className="mb-4 p-3 bg-rose-50 text-rose-700 text-sm rounded-lg border border-rose-200">
           <div className="p-3 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-xs font-medium rounded-xl border border-red-200 dark:border-red-900/50">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Password Baru</label>
           <div className="space-y-1">
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
               Password Baru
@@ -79,10 +89,13 @@ export default function ResetPassword() {
               placeholder="Minimal 6 karakter"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               className="w-full p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Konfirmasi Password Baru</label>
           <div className="space-y-1">
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
               Konfirmasi Password Baru
@@ -94,6 +107,7 @@ export default function ResetPassword() {
               placeholder="Ulangi password baru"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               className="w-full p-2.5 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
@@ -101,17 +115,21 @@ export default function ResetPassword() {
           <button
             type="submit"
             disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors disabled:opacity-50"
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold p-2.5 rounded-xl transition duration-200 text-sm cursor-pointer disabled:opacity-50"
           >
             {loading ? 'Memproses...' : 'Simpan Password Baru'}
           </button>
         </form>
 
+        <div className="mt-6 text-center text-sm text-slate-600">
         <p className="text-center text-xs text-gray-500 dark:text-gray-400">
           Kembali ke{' '}
+          <Link to="/login" className="text-blue-600 hover:underline font-medium">
           <Link to="/login" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
             Halaman Login
           </Link>
+        </div>
         </p>
       </div>
     </div>

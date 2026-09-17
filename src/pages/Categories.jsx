@@ -6,7 +6,6 @@ import {
   TrendingUp,
   TrendingDown,
   AlertCircle,
-  Coins,
 } from "lucide-react";
 import API from "../services/api";
 import toast from "react-hot-toast";
@@ -21,6 +20,7 @@ export default function Categories() {
 
   // Modal Hapus State
   const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -64,7 +64,8 @@ export default function Categories() {
 
   // Konfirmasi Hapus Kategori
   const confirmDelete = async () => {
-    if (!deleteTargetId) return;
+    if (!deleteTargetId || deleting) return;
+    setDeleting(true);
     try {
       await API.delete(`/categories/${deleteTargetId}`);
       toast.success("Kategori berhasil dihapus");
@@ -76,6 +77,8 @@ export default function Categories() {
           err.response?.data?.message ||
           "Gagal menghapus kategori",
       );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -220,21 +223,22 @@ export default function Categories() {
               </h4>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-              Apakah kamu yakin ingin menghapus kategori ini? Pastikan tidak ada
-              transaksi aktif yang bergantung pada kategori ini.
+              Apakah kamu yakin ingin menghapus kategori ini? Kategori akan dihapus tanpa menghilangkan riwayat transaksi kamu.
             </p>
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setDeleteTargetId(null)}
-                className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
+                disabled={deleting}
+                className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer disabled:opacity-50"
               >
                 Batal
               </button>
               <button
                 onClick={confirmDelete}
-                className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition"
+                disabled={deleting}
+                className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition cursor-pointer disabled:opacity-50"
               >
-                Hapus
+                {deleting ? "Menghapus..." : "Hapus"}
               </button>
             </div>
           </div>
