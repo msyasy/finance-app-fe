@@ -20,7 +20,7 @@ export default function ForgotPassword() {
       setEmail("");
     } catch (err) {
       setError(
-        err.response?.data?.error || "Gagal mengirim email reset password"
+        err.response?.data?.error || "Gagal mengirim email reset password",
       );
     } finally {
       setLoading(false);
