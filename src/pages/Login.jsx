@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Fingerprint } from "lucide-react";
 import API from "../services/api";
+import { loginWithBiometrics, isWebAuthnSupported } from "../services/webauthn";
+import toast from "react-hot-toast";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [bioLoading, setBioLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,7 +27,7 @@ export default function Login() {
         localStorage.setItem("token", token);
       }
 
-      // 2. Simpan Data User (Gunakan fallback jika backend hanya kirim token)
+      // 2. Simpan Data User
       const userData =
         resData?.user ||
         response.data?.user ||
@@ -33,7 +37,7 @@ export default function Login() {
 
       localStorage.setItem("user", JSON.stringify(userData));
 
-      // 3. Pindah Halaman & Refresh Sesi secara Bersih
+      // 3. Pindah Halaman
       window.location.href = "/dashboard";
     } catch (err) {
       setError(
@@ -43,6 +47,38 @@ export default function Login() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    if (!email.trim()) {
+      toast.error("Masukkan email akun kamu terlebih dahulu untuk login biometrik!");
+      return;
+    }
+
+    setError("");
+    setBioLoading(true);
+
+    try {
+      const resData = await loginWithBiometrics(email);
+      const token = resData?.token;
+      if (token) {
+        localStorage.setItem("token", token);
+      }
+      const userData = resData?.user || { email, name: email.split("@")[0] };
+      localStorage.setItem("user", JSON.stringify(userData));
+
+      toast.success("Login biometrik berhasil!");
+      window.location.href = "/dashboard";
+    } catch (err) {
+      const msg =
+        err.response?.data?.error ||
+        err.message ||
+        "Login biometrik gagal";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setBioLoading(false);
     }
   };
 
@@ -103,12 +139,26 @@ export default function Login() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || bioLoading}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold p-2.5 rounded-xl transition duration-200 text-sm cursor-pointer disabled:opacity-50"
           >
             {loading ? "Memproses..." : "Masuk"}
           </button>
         </form>
+
+        {isWebAuthnSupported() && (
+          <div className="pt-2 border-t border-gray-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={handleBiometricLogin}
+              disabled={loading || bioLoading}
+              className="w-full bg-gray-50 hover:bg-gray-100 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-slate-700 font-semibold p-2.5 rounded-xl transition duration-200 text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              <Fingerprint size={18} className="text-blue-600 dark:text-blue-400" />
+              {bioLoading ? "Memverifikasi Biometrik..." : "Masuk dengan Biometrik / Passkey"}
+            </button>
+          </div>
+        )}
 
         <p className="text-center text-xs text-gray-500 dark:text-gray-400">
           Belum punya akun?{" "}

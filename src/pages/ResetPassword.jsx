@@ -1,30 +1,30 @@
-import { useState } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { resetPassword } from '../services/api';
+import { useState } from "react";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { resetPassword } from "../services/api";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const token = searchParams.get("token");
   const navigate = useNavigate();
 
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage('');
-    setError('');
+    setMessage("");
+    setError("");
 
     if (newPassword !== confirmPassword) {
-      setError('Konfirmasi password tidak cocok');
+      setError("Konfirmasi password tidak cocok");
       return;
     }
 
     if (!token) {
-      setError('Token reset password tidak ditemukan di URL');
+      setError("Token reset password tidak ditemukan di URL");
       return;
     }
 
@@ -34,10 +34,10 @@ export default function ResetPassword() {
       const res = await resetPassword({ token, new_password: newPassword });
       setMessage(res.data.message);
       setTimeout(() => {
-        navigate('/login');
+        navigate("/login");
       }, 3000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Gagal mereset password');
+      setError(err.response?.data?.error || "Gagal mereset password");
     } finally {
       setLoading(false);
     }
@@ -103,13 +103,16 @@ export default function ResetPassword() {
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold p-2.5 rounded-xl transition duration-200 text-sm cursor-pointer disabled:opacity-50"
           >
-            {loading ? 'Memproses...' : 'Simpan Password Baru'}
+            {loading ? "Memproses..." : "Simpan Password Baru"}
           </button>
         </form>
 
         <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-          Kembali ke{' '}
-          <Link to="/login" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+          Kembali ke{" "}
+          <Link
+            to="/login"
+            className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+          >
             Halaman Login
           </Link>
         </p>

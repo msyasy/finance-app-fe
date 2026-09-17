@@ -11,6 +11,7 @@ import {
   PieChart as PieIcon,
   BarChart3,
   AlertTriangle,
+  Fingerprint,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
@@ -26,12 +27,14 @@ import {
   Cell,
 } from "recharts";
 import API from "../services/api";
+import toast from "react-hot-toast";
+import { registerBiometrics, isWebAuthnSupported } from "../services/webauthn";
 
 const CATEGORY_COLORS = [
   "#3B82F6",
-  "#EF4444",
   "#10B981",
   "#F59E0B",
+  "#EF4444",
   "#8B5CF6",
   "#EC4899",
   "#6366F1",
@@ -43,6 +46,19 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
   const [cashFlowData, setCashFlowData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [regBioLoading, setRegBioLoading] = useState(false);
+
+  const handleRegisterBiometric = async () => {
+    setRegBioLoading(true);
+    try {
+      const res = await registerBiometrics();
+      toast.success(res?.message || "Biometrik (Passkey) berhasil didaftarkan!");
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message || "Gagal mendaftarkan biometrik");
+    } finally {
+      setRegBioLoading(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -161,17 +177,29 @@ export default function Dashboard() {
     <div className="space-y-4 sm:space-y-6">
       {/* HEADER & RINGKASAN SALDO */}
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 sm:gap-6">
-        <div className="shrink-0">
-          <h1 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">
-            Dashboard Keuangan
-          </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Selamat Datang kembali,{" "}
-            <span className="font-semibold text-blue-600 dark:text-blue-400">
-              Pengguna
-            </span>
-            !
-          </p>
+        <div className="shrink-0 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">
+              Dashboard Keuangan
+            </h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Selamat Datang kembali,{" "}
+              <span className="font-semibold text-blue-600 dark:text-blue-400">
+                Pengguna
+              </span>
+              !
+            </p>
+          </div>
+          {isWebAuthnSupported() && (
+            <button
+              onClick={handleRegisterBiometric}
+              disabled={regBioLoading}
+              className="mt-2 sm:mt-0 text-xs font-semibold px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <Fingerprint size={15} />
+              {regBioLoading ? "Mendaftarkan..." : "Aktifkan Passkey Biometrik"}
+            </button>
+          )}
         </div>
 
         {/* 4 Kartu Ringkasan (1 kolom di HP, 2 kolom di tablet, 4 di desktop) */}
