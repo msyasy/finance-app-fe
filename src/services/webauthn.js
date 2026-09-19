@@ -136,9 +136,16 @@ export async function loginWithBiometrics() {
       throw new Error("Format opsi login biometrik dari server tidak valid.");
     }
 
-    // Format challenge & allowCredentials ke ArrayBuffer
+    // Format challenge ke ArrayBuffer
     publicKeyOpts.challenge = base64URLToBuffer(publicKeyOpts.challenge);
+
+    // FIX ANDROID CHROME: Hapus allowCredentials jika array-nya kosong agar browser mencari seluruh Passkey yang tersimpan
     if (
+      publicKeyOpts.allowCredentials &&
+      publicKeyOpts.allowCredentials.length === 0
+    ) {
+      delete publicKeyOpts.allowCredentials;
+    } else if (
       publicKeyOpts.allowCredentials &&
       Array.isArray(publicKeyOpts.allowCredentials)
     ) {
@@ -149,7 +156,7 @@ export async function loginWithBiometrics() {
 
     console.log("[WebAuthn Getting Credential Assertion]:", publicKeyOpts);
 
-    // Step 2: Panggil dialog Biometrik perangkat (Browser otomatis mencari Passkey tersimpan)
+    // Step 2: Panggil dialog Biometrik perangkat
     const assertion = await navigator.credentials.get({
       publicKey: publicKeyOpts,
     });
