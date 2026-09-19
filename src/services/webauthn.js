@@ -8,10 +8,7 @@ function bufferToBase64URL(buffer) {
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 function base64URLToBuffer(base64URL) {
@@ -43,7 +40,7 @@ export function isWebAuthnSupported() {
 export async function registerBiometrics() {
   if (!isWebAuthnSupported()) {
     throw new Error(
-      "Perangkat atau browser kamu belum mendukung autentikasi biometrik."
+      "Perangkat atau browser kamu belum mendukung autentikasi biometrik.",
     );
   }
 
@@ -54,10 +51,15 @@ export async function registerBiometrics() {
 
     console.log("[WebAuthn Register Begin Response]:", rawData);
 
-    const publicKeyOpts = rawData.publicKey || (rawData.options && rawData.options.publicKey) || rawData;
+    const publicKeyOpts =
+      rawData.publicKey ||
+      (rawData.options && rawData.options.publicKey) ||
+      rawData;
 
     if (!publicKeyOpts || !publicKeyOpts.challenge) {
-      throw new Error("Format opsi registrasi biometrik dari server tidak valid.");
+      throw new Error(
+        "Format opsi registrasi biometrik dari server tidak valid.",
+      );
     }
 
     // Format challenge & user id ke ArrayBuffer
@@ -66,7 +68,10 @@ export async function registerBiometrics() {
       publicKeyOpts.user.id = base64URLToBuffer(publicKeyOpts.user.id);
     }
 
-    if (publicKeyOpts.excludeCredentials && Array.isArray(publicKeyOpts.excludeCredentials)) {
+    if (
+      publicKeyOpts.excludeCredentials &&
+      Array.isArray(publicKeyOpts.excludeCredentials)
+    ) {
       for (let cred of publicKeyOpts.excludeCredentials) {
         cred.id = base64URLToBuffer(cred.id);
       }
@@ -88,14 +93,17 @@ export async function registerBiometrics() {
       type: credential.type,
       response: {
         attestationObject: bufferToBase64URL(
-          credential.response.attestationObject
+          credential.response.attestationObject,
         ),
         clientDataJSON: bufferToBase64URL(credential.response.clientDataJSON),
       },
     };
 
     // Step 4: Kirim ke backend untuk verifikasi & penyimpanan Public Key
-    const finishRes = await API.post("/webauthn/register/finish", credentialJSON);
+    const finishRes = await API.post(
+      "/webauthn/register/finish",
+      credentialJSON,
+    );
     return finishRes.data;
   } catch (err) {
     console.error("[WebAuthn Register Error]:", err);
@@ -103,27 +111,26 @@ export async function registerBiometrics() {
   }
 }
 
-// 2. Login dengan Biometrik (Passkey)
-export async function loginWithBiometrics(email) {
+// 2. Login dengan Biometrik (Passkey Usernameless / Discoverable)
+export async function loginWithBiometrics() {
   if (!isWebAuthnSupported()) {
     throw new Error(
-      "Perangkat atau browser kamu belum mendukung autentikasi biometrik."
+      "Perangkat atau browser kamu belum mendukung autentikasi biometrik.",
     );
   }
 
-  if (!email) {
-    throw new Error("Masukkan email kamu terlebih dahulu.");
-  }
-
   try {
-    // Step 1: Minta challenge login dari backend
-    const beginRes = await API.post("/webauthn/login/begin", { email });
+    // Step 1: Minta challenge login dari backend (tanpa bawa email)
+    const beginRes = await API.post("/webauthn/login/begin");
     const rawData = beginRes.data;
 
     console.log("[WebAuthn Login Begin Response]:", rawData);
 
-    const user_id = rawData.user_id;
-    const publicKeyOpts = (rawData.options && rawData.options.publicKey) || rawData.publicKey || rawData;
+    const session_id = rawData.session_id;
+    const publicKeyOpts =
+      (rawData.options && rawData.options.publicKey) ||
+      rawData.publicKey ||
+      rawData;
 
     if (!publicKeyOpts || !publicKeyOpts.challenge) {
       throw new Error("Format opsi login biometrik dari server tidak valid.");
@@ -131,7 +138,10 @@ export async function loginWithBiometrics(email) {
 
     // Format challenge & allowCredentials ke ArrayBuffer
     publicKeyOpts.challenge = base64URLToBuffer(publicKeyOpts.challenge);
-    if (publicKeyOpts.allowCredentials && Array.isArray(publicKeyOpts.allowCredentials)) {
+    if (
+      publicKeyOpts.allowCredentials &&
+      Array.isArray(publicKeyOpts.allowCredentials)
+    ) {
       for (let cred of publicKeyOpts.allowCredentials) {
         cred.id = base64URLToBuffer(cred.id);
       }
@@ -139,7 +149,7 @@ export async function loginWithBiometrics(email) {
 
     console.log("[WebAuthn Getting Credential Assertion]:", publicKeyOpts);
 
-    // Step 2: Panggil dialog Biometrik perangkat
+    // Step 2: Panggil dialog Biometrik perangkat (Browser otomatis mencari Passkey tersimpan)
     const assertion = await navigator.credentials.get({
       publicKey: publicKeyOpts,
     });
@@ -153,7 +163,7 @@ export async function loginWithBiometrics(email) {
       type: assertion.type,
       response: {
         authenticatorData: bufferToBase64URL(
-          assertion.response.authenticatorData
+          assertion.response.authenticatorData,
         ),
         clientDataJSON: bufferToBase64URL(assertion.response.clientDataJSON),
         signature: bufferToBase64URL(assertion.response.signature),
@@ -165,8 +175,8 @@ export async function loginWithBiometrics(email) {
 
     // Step 4: Verifikasi di backend & dapatkan Token JWT
     const finishRes = await API.post(
-      `/webauthn/login/finish?user_id=${user_id}`,
-      assertionJSON
+      `/webauthn/login/finish?session_id=${encodeURIComponent(session_id)}`,
+      assertionJSON,
     );
     return finishRes.data;
   } catch (err) {

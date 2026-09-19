@@ -28,7 +28,8 @@ export default function Login() {
       }
 
       // 2. Simpan Data User
-      const userData = resData?.user ||
+      const userData =
+        resData?.user ||
         response.data?.user ||
         resData?.profile ||
         (resData?.name ? resData : null) || {
@@ -52,23 +53,22 @@ export default function Login() {
   };
 
   const handleBiometricLogin = async () => {
-    if (!email.trim()) {
-      toast.error(
-        "Masukkan email akun kamu terlebih dahulu untuk login biometrik!",
-      );
-      return;
-    }
-
     setError("");
     setBioLoading(true);
 
     try {
-      const resData = await loginWithBiometrics(email);
+      // Panggil login biometrik usernameless (tanpa kirim email)
+      const resData = await loginWithBiometrics();
       const token = resData?.token;
       if (token) {
         localStorage.setItem("token", token);
       }
-      const userData = resData?.user || { email, name: email.split("@")[0] };
+
+      // Data user didapat otomatis dari Passkey perangkat
+      const userData = resData?.user || {
+        email: "Biometric User",
+        name: "Biometric User",
+      };
       localStorage.setItem("user", JSON.stringify(userData));
 
       toast.success("Login biometrik berhasil!");
