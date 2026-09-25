@@ -12,6 +12,39 @@ import {
 import API from "../services/api";
 import toast from "react-hot-toast";
 
+// Helper parsing tanggal yang aman dari format PostgreSQL (potong mikrodetik)
+function parseDateSafe(rawDate) {
+  if (!rawDate) return null;
+  let str = String(rawDate).trim();
+  if (str.includes(".")) {
+    str = str.split(".")[0];
+  }
+  str = str.replace(" ", "T");
+  let d = new Date(str);
+  if (isNaN(d.getTime())) {
+    const datePart = String(rawDate).split(" ")[0];
+    const parts = datePart.split("-");
+    if (parts.length === 3) {
+      d = new Date(
+        parseInt(parts[0], 10),
+        parseInt(parts[1], 10) - 1,
+        parseInt(parts[2], 10),
+      );
+    }
+  }
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function formatTxDate(rawDate) {
+  const d = parseDateSafe(rawDate);
+  if (!d) return "Baru saja";
+  return d.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default function Transactions() {
   const [transactions, setTransactions] = useState([]);
   const [wallets, setWallets] = useState([]);
@@ -125,7 +158,8 @@ export default function Transactions() {
           Riwayat Transaksi
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Pantau seluruh mutasi keuangan dan histori transaksi kamu secara rinci.
+          Pantau seluruh mutasi keuangan dan histori transaksi kamu secara
+          rinci.
         </p>
       </div>
 
@@ -209,13 +243,7 @@ export default function Transactions() {
                 ? `${categoryName} > ${noteText}`
                 : categoryName;
 
-              const formattedDate = new Date(
-                tx.created_at || tx.date,
-              ).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              });
+              const formattedDate = formatTxDate(tx.created_at || tx.date);
 
               return (
                 <div

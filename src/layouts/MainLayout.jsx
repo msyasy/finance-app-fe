@@ -22,7 +22,6 @@ export default function MainLayout() {
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 font-sans overflow-hidden transition-colors duration-300">
-      
       {/* Overlay Gelap Saat Sidebar Terbuka di HP */}
       {sidebarOpen && (
         <div
@@ -56,7 +55,10 @@ export default function MainLayout() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <Sidebar handleLogout={handleLogout} onItemClick={() => setSidebarOpen(false)} />
+        <Sidebar
+          handleLogout={handleLogout}
+          onItemClick={() => setSidebarOpen(false)}
+        />
       </aside>
 
       {/* Main Content Container */}

@@ -20,7 +20,10 @@ export default function FloatingAddTxModal() {
 
   // Balance modal
   const [insufficientModal, setInsufficientModal] = useState(false);
-  const [selectedWalletInfo, setSelectedWalletInfo] = useState({ name: "", balance: 0 });
+  const [selectedWalletInfo, setSelectedWalletInfo] = useState({
+    name: "",
+    balance: 0,
+  });
 
   const fetchMetadata = async () => {
     setLoading(true);
@@ -134,8 +137,13 @@ export default function FloatingAddTxModal() {
         className="fixed bottom-6 right-6 z-40 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white shadow-lg shadow-blue-600/30 rounded-full px-4 py-3.5 flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 group"
         title="Catat Transaksi Baru"
       >
-        <Plus size={20} className="group-hover:rotate-90 transition-transform duration-200" />
-        <span className="text-xs font-bold hidden sm:inline">Catat Transaksi</span>
+        <Plus
+          size={20}
+          className="group-hover:rotate-90 transition-transform duration-200"
+        />
+        <span className="text-xs font-bold hidden sm:inline">
+          Catat Transaksi
+        </span>
       </button>
 
       {/* Modal Overlay Catat Transaksi */}

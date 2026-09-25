@@ -37,6 +37,39 @@ const CATEGORY_COLORS = [
   "#6366F1",
 ];
 
+// Helper parsing tanggal yang aman dari format PostgreSQL (potong mikrodetik)
+function parseDateSafe(rawDate) {
+  if (!rawDate) return null;
+  let str = String(rawDate).trim();
+  if (str.includes(".")) {
+    str = str.split(".")[0];
+  }
+  str = str.replace(" ", "T");
+  let d = new Date(str);
+  if (isNaN(d.getTime())) {
+    const datePart = String(rawDate).split(" ")[0];
+    const parts = datePart.split("-");
+    if (parts.length === 3) {
+      d = new Date(
+        parseInt(parts[0], 10),
+        parseInt(parts[1], 10) - 1,
+        parseInt(parts[2], 10),
+      );
+    }
+  }
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function formatTxDate(rawDate) {
+  const d = parseDateSafe(rawDate);
+  if (!d) return "Baru saja";
+  return d.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default function Dashboard() {
   const [wallets, setWallets] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -51,7 +84,9 @@ export default function Dashboard() {
       const res = await registerBiometrics();
       toast.success(res?.message || "Biometrik (Passkey) berhasil didaftarkan!");
     } catch (err) {
-      toast.error(err.response?.data?.error || err.message || "Gagal mendaftarkan biometrik");
+      toast.error(
+        err.response?.data?.error || err.message || "Gagal mendaftarkan biometrik",
+      );
     } finally {
       setRegBioLoading(false);
     }
@@ -119,22 +154,27 @@ export default function Dashboard() {
       : 0;
 
   // Pie Chart Kategori Pengeluaran Bulan Ini
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
 
   const currentMonthTx = transactions.filter((tx) => {
-    if (!tx.created_at && !tx.date) return false;
-    const dateStr = String(tx.created_at || tx.date).replace(" ", "T");
-    const d = new Date(dateStr);
+    const d = parseDateSafe(tx.created_at || tx.date);
     return (
-      !isNaN(d.getTime()) &&
+      d !== null &&
       d.getMonth() === currentMonth &&
       d.getFullYear() === currentYear
     );
   });
 
+  // Jika transaksi bulan ini kosong/belum ada yang cocok bulan ini, gunakan seluruh transaksi pengeluaran sebagai fallback agar grafik tetap tampil
+  const pieSourceTx =
+    currentMonthTx.length > 0
+      ? currentMonthTx
+      : transactions.filter((tx) => tx.type === "expense");
+
   const categoryMap = {};
-  currentMonthTx
+  pieSourceTx
     .filter((tx) => tx.type === "expense")
     .forEach((tx) => {
       const catObj = categories.find(
@@ -150,9 +190,10 @@ export default function Dashboard() {
     value: categoryMap[key],
   }));
 
-  const sortedWallets = [...wallets].sort(
-    (a, b) => (parseFloat(b.balance) || 0) - (parseFloat(a.balance) || 0),
-  );
+  // Ambil HANYA 4 dompet dengan saldo terbesar
+  const sortedWallets = [...wallets]
+    .sort((a, b) => (parseFloat(b.balance) || 0) - (parseFloat(a.balance) || 0))
+    .slice(0, 4);
 
   if (loading) {
     return (
@@ -258,7 +299,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Rincian Dompet Saya */}
+      {/* Rincian 4 Dompet Terbanyak */}
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
@@ -417,13 +458,7 @@ export default function Dashboard() {
                 ? `${categoryName} > ${noteText}`
                 : categoryName;
 
-              const formattedDate = new Date(
-                String(tx.created_at || tx.date).replace(" ", "T"),
-              ).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              });
+              const formattedDate = formatTxDate(tx.created_at || tx.date);
 
               return (
                 <div
