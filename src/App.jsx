@@ -1,14 +1,16 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
+// Eager imports (halaman utama - tidak dilazy agar FCP/LCP cepat)
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
 
-const Login = lazy(() => import("./pages/Login"));
+// Lazy imports (halaman sekunder - dimuat saat dibutuhkan saja)
 const Register = lazy(() => import("./pages/Register"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Transactions = lazy(() => import("./pages/Transactions"));
 const Wallets = lazy(() => import("./pages/Wallets"));
 const Transfer = lazy(() => import("./pages/Transfer"));
