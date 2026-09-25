@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { Menu, X } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import useAutoLogout from "../hooks/useAutoLogout";
+import FloatingAddTxModal from "../components/FloatingAddTxModal";
 
 export default function MainLayout() {
   const navigate = useNavigate();
@@ -59,11 +60,14 @@ export default function MainLayout() {
       </aside>
 
       {/* Main Content Container */}
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-slate-950 transition-colors duration-300 relative">
         <div className="max-w-6xl mx-auto space-y-6">
           <Outlet />
         </div>
       </main>
+
+      {/* Button Melayang + Modal Quick Add Transaksi */}
+      <FloatingAddTxModal />
     </div>
   );
 }

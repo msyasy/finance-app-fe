@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   Receipt,
-  Plus,
   Search,
   Trash2,
   TrendingUp,
@@ -23,14 +22,6 @@ export default function Transactions() {
   const [page, setPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Form State
-  const [walletId, setWalletId] = useState("");
-  const [type, setType] = useState("expense");
-  const [categoryId, setCategoryId] = useState("");
-  const [amountDisplay, setAmountDisplay] = useState("");
-  const [amountRaw, setAmountRaw] = useState("");
-  const [note, setNote] = useState("");
-
   // Filter State
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedWalletFilter, setSelectedWalletFilter] = useState("");
@@ -38,23 +29,6 @@ export default function Transactions() {
 
   // Modal State
   const [deleteTargetId, setDeleteTargetId] = useState(null);
-  const [insufficientBalanceModal, setInsufficientBalanceModal] =
-    useState(false);
-  const [selectedWalletInfo, setSelectedWalletInfo] = useState({
-    name: "",
-    balance: 0,
-  });
-
-  // Format Input Angka ke Ribuan
-  const handleAmountChange = (e) => {
-    const rawValue = e.target.value.replace(/\D/g, "");
-    setAmountRaw(rawValue);
-    if (rawValue) {
-      setAmountDisplay(parseInt(rawValue, 10).toLocaleString("id-ID"));
-    } else {
-      setAmountDisplay("");
-    }
-  };
 
   // Load Seluruh Data (Limit Besar untuk Client-Side Filter)
   const fetchData = async () => {
@@ -70,13 +44,10 @@ export default function Transactions() {
         setTransactions(txRes.data.data || txRes.data.transactions || []);
       }
       if (walletRes?.data) {
-        const wList = walletRes.data.data || walletRes.data.wallets || [];
-        setWallets(wList);
-        if (wList.length > 0 && !walletId) setWalletId(wList[0].id);
+        setWallets(walletRes.data.data || walletRes.data.wallets || []);
       }
       if (catRes?.data) {
-        const cList = catRes.data.data || catRes.data.categories || [];
-        setCategories(cList);
+        setCategories(catRes.data.data || catRes.data.categories || []);
       }
     } catch (err) {
       console.error("Gagal memuat data transaksi", err);
@@ -87,74 +58,21 @@ export default function Transactions() {
 
   useEffect(() => {
     fetchData();
+
+    // Listen event global dari Floating Button saat transaksi baru ditambahkan
+    const handleTxUpdate = () => {
+      fetchData();
+    };
+    window.addEventListener("transactionUpdated", handleTxUpdate);
+    return () => {
+      window.removeEventListener("transactionUpdated", handleTxUpdate);
+    };
   }, []);
-
-  // Filter Kategori Sesuai Tipe di Form
-  const filteredCategoriesForForm = categories.filter((c) => c.type === type);
-
-  useEffect(() => {
-    if (filteredCategoriesForForm.length > 0) {
-      setCategoryId(filteredCategoriesForForm[0].id);
-    } else {
-      setCategoryId("");
-    }
-  }, [type, categories]);
 
   // Handle Reset Halaman ke-1 Saat Filter Berubah
   useEffect(() => {
     setPage(1);
   }, [searchQuery, selectedWalletFilter, selectedCategoryFilter]);
-
-  // Handle Submit Tambah Transaksi
-  const handleAddTransaction = async (e) => {
-    e.preventDefault();
-    if (!walletId || !categoryId || !amountRaw) {
-      toast.error("Mohon lengkapi dompet, kategori, dan nominal!");
-      return;
-    }
-
-    const inputAmount = parseFloat(amountRaw);
-    const targetWallet = wallets.find((w) => String(w.id) === String(walletId));
-
-    if (type === "expense" && targetWallet) {
-      const currentBal = parseFloat(targetWallet.balance) || 0;
-      if (inputAmount > currentBal) {
-        setSelectedWalletInfo({
-          name: targetWallet.name,
-          balance: currentBal,
-        });
-        setInsufficientBalanceModal(true);
-        toast.error(`Saldo ${targetWallet.name} tidak mencukupi!`);
-        return;
-      }
-    }
-
-    try {
-      await API.post("/transactions", {
-        wallet_id: parseInt(walletId),
-        category_id: parseInt(categoryId),
-        type,
-        amount: inputAmount,
-        notes: note,
-        note: note,
-      });
-
-      toast.success("Transaksi berhasil ditambahkan!");
-      setAmountDisplay("");
-      setAmountRaw("");
-      setNote("");
-      setPage(1);
-      fetchData();
-    } catch (err) {
-      const errorMessage =
-        err.response?.data?.error || err.response?.data?.message;
-      if (errorMessage && errorMessage.toLowerCase().includes("mencukupi")) {
-        setInsufficientBalanceModal(true);
-      } else {
-        toast.error(errorMessage || "Gagal menambah transaksi");
-      }
-    }
-  };
 
   // Handle Hapus Transaksi
   const confirmDelete = async () => {
@@ -164,6 +82,8 @@ export default function Transactions() {
       toast.success("Transaksi berhasil dihapus");
       setDeleteTargetId(null);
       fetchData();
+      // Dispatch global event agar dompet/dashboard juga terupdate
+      window.dispatchEvent(new Event("transactionUpdated"));
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal menghapus transaksi");
     }
@@ -202,111 +122,18 @@ export default function Transactions() {
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
           <Receipt size={24} className="text-blue-600 dark:text-blue-400" />
-          Kelola Transaksi
+          Riwayat Transaksi
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Catat dan pantau seluruh mutasi keuangan kamu secara rinci.
+          Pantau seluruh mutasi keuangan dan histori transaksi kamu secara rinci.
         </p>
-      </div>
-
-      {/* Form Catat Transaksi Baru */}
-      <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white">
-          Catat Transaksi Baru
-        </h3>
-
-        <form
-          onSubmit={handleAddTransaction}
-          className="grid grid-cols-1 md:grid-cols-6 gap-3"
-        >
-          {/* Pilih Dompet */}
-          <div className="md:col-span-1">
-            <select
-              value={walletId}
-              onChange={(e) => setWalletId(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
-            >
-              {wallets.length === 0 && (
-                <option value="">Belum Ada Dompet</option>
-              )}
-              {wallets.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name} (Rp{" "}
-                  {parseFloat(w.balance || 0).toLocaleString("id-ID")})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Pilih Tipe */}
-          <div className="md:col-span-1">
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-semibold text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="expense">Pengeluaran (-)</option>
-              <option value="income">Pemasukan (+)</option>
-            </select>
-          </div>
-
-          {/* Pilih Kategori */}
-          <div className="md:col-span-1">
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
-            >
-              {filteredCategoriesForForm.length === 0 && (
-                <option value="">Tidak ada kategori</option>
-              )}
-              {filteredCategoriesForForm.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Input Nominal */}
-          <div className="md:col-span-1">
-            <input
-              type="text"
-              placeholder="Jumlah (Rp)"
-              value={amountDisplay}
-              onChange={handleAmountChange}
-              className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          {/* Catatan */}
-          <div className="md:col-span-1">
-            <input
-              type="text"
-              placeholder="Catatan / Keterangan"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          {/* Tombol Submit */}
-          <div className="md:col-span-1">
-            <button
-              type="submit"
-              className="w-full h-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
-            >
-              <Plus size={16} /> Tambah
-            </button>
-          </div>
-        </form>
       </div>
 
       {/* Tabel Riwayat Transaksi */}
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <h3 className="text-base font-bold text-gray-800 dark:text-white">
-            Riwayat Transaksi
+            Daftar Transaksi ({totalItems})
           </h3>
 
           {/* Toolbar Filter & Pencarian */}
@@ -355,7 +182,11 @@ export default function Transactions() {
 
         {/* List Transaksi */}
         <div className="space-y-2">
-          {paginatedTransactions.length === 0 ? (
+          {loading ? (
+            <div className="py-12 text-center text-xs text-gray-400">
+              Memuat riwayat transaksi...
+            </div>
+          ) : paginatedTransactions.length === 0 ? (
             <p className="text-xs text-gray-400 py-10 text-center">
               Tidak ada data transaksi yang ditemukan.
             </p>
@@ -444,7 +275,7 @@ export default function Transactions() {
           )}
         </div>
 
-        {/* Control Pagination: Cuma tampil kalau total item terfilter > 10 */}
+        {/* Control Pagination */}
         {totalItems > itemsPerPage && (
           <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-slate-800">
             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -481,44 +312,6 @@ export default function Transactions() {
           </div>
         )}
       </div>
-
-      {/* Modal Alert Saldo Tidak Mencukupi */}
-      {insufficientBalanceModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-xl text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
-              <AlertCircle size={28} />
-            </div>
-
-            <div>
-              <h4 className="text-base font-bold text-gray-900 dark:text-white">
-                Saldo Tidak Mencukupi!
-              </h4>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                Nominal transaksi yang kamu masukkan melebihi sisa saldo pada
-                dompet{" "}
-                <span className="font-bold text-gray-800 dark:text-gray-200">
-                  {selectedWalletInfo.name}
-                </span>{" "}
-                (Sisa Saldo:{" "}
-                <span className="font-bold text-rose-600 dark:text-rose-400">
-                  Rp {selectedWalletInfo.balance.toLocaleString("id-ID")}
-                </span>
-                ).
-              </p>
-            </div>
-
-            <div className="pt-2">
-              <button
-                onClick={() => setInsufficientBalanceModal(false)}
-                className="w-full px-4 py-2.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition cursor-pointer"
-              >
-                Mengerti
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal Konfirmasi Hapus */}
       {deleteTargetId && (
