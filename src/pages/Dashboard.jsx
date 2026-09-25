@@ -26,6 +26,7 @@ import {
 import API from "../services/api";
 import toast from "react-hot-toast";
 import { registerBiometrics, isWebAuthnSupported } from "../services/webauthn";
+import { getCached, setCached } from "../services/dataCache";
 
 const CATEGORY_COLORS = [
   "#3B82F6",
@@ -37,7 +38,6 @@ const CATEGORY_COLORS = [
   "#6366F1",
 ];
 
-// Helper parsing tanggal yang aman dari format PostgreSQL (potong mikrodetik)
 function parseDateSafe(rawDate) {
   if (!rawDate) return null;
   let str = String(rawDate).trim();
@@ -71,11 +71,18 @@ function formatTxDate(rawDate) {
 }
 
 export default function Dashboard() {
-  const [wallets, setWallets] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [transactions, setTransactions] = useState([]);
-  const [cashFlowData, setCashFlowData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cachedWallets = getCached("wallets");
+  const cachedCategories = getCached("categories");
+  const cachedTx = getCached("transactions");
+  const cachedCF = getCached("cashFlow");
+
+  const [wallets, setWallets] = useState(cachedWallets || []);
+  const [categories, setCategories] = useState(cachedCategories || []);
+  const [transactions, setTransactions] = useState(cachedTx || []);
+  const [cashFlowData, setCashFlowData] = useState(cachedCF || []);
+  
+  // Jika sudah ada cache, loading = false secara instan (0ms delay!)
+  const [loading, setLoading] = useState(!cachedWallets && !cachedTx);
   const [regBioLoading, setRegBioLoading] = useState(false);
 
   const handleRegisterBiometric = async () => {
@@ -92,8 +99,10 @@ export default function Dashboard() {
     }
   };
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (isBackground = false) => {
+    if (!isBackground && !cachedWallets) {
+      setLoading(true);
+    }
     try {
       const [walletRes, catRes, txRes, cfRes] = await Promise.all([
         API.get("/wallets").catch(() => null),
@@ -103,16 +112,24 @@ export default function Dashboard() {
       ]);
 
       if (walletRes?.data) {
-        setWallets(walletRes.data.data || walletRes.data.wallets || []);
+        const wData = walletRes.data.data || walletRes.data.wallets || [];
+        setWallets(wData);
+        setCached("wallets", wData);
       }
       if (catRes?.data) {
-        setCategories(catRes.data.data || catRes.data.categories || []);
+        const cData = catRes.data.data || catRes.data.categories || [];
+        setCategories(cData);
+        setCached("categories", cData);
       }
       if (txRes?.data) {
-        setTransactions(txRes.data.data || txRes.data.transactions || []);
+        const tData = txRes.data.data || txRes.data.transactions || [];
+        setTransactions(tData);
+        setCached("transactions", tData);
       }
       if (cfRes?.data) {
-        setCashFlowData(cfRes.data.data || []);
+        const cfData = cfRes.data.data || [];
+        setCashFlowData(cfData);
+        setCached("cashFlow", cfData);
       }
     } catch (err) {
       console.error("Gagal memuat data dashboard", err);
@@ -122,11 +139,10 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(!!cachedWallets);
 
-    // Listen event global dari Floating Button / Transaction Actions
     const handleTxUpdate = () => {
-      fetchData();
+      fetchData(true);
     };
     window.addEventListener("transactionUpdated", handleTxUpdate);
     return () => {
@@ -140,7 +156,6 @@ export default function Dashboard() {
     0,
   );
 
-  // Ambil Pemasukan & Pengeluaran bulan ini secara akurat langsung dari data agregat CashFlow backend SQL
   const latestMonthCF =
     cashFlowData.length > 0
       ? cashFlowData[cashFlowData.length - 1]
@@ -153,7 +168,6 @@ export default function Dashboard() {
       ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100)
       : 0;
 
-  // Pie Chart Kategori Pengeluaran Bulan Ini
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
@@ -167,7 +181,6 @@ export default function Dashboard() {
     );
   });
 
-  // Jika transaksi bulan ini kosong/belum ada yang cocok bulan ini, gunakan seluruh transaksi pengeluaran sebagai fallback agar grafik tetap tampil
   const pieSourceTx =
     currentMonthTx.length > 0
       ? currentMonthTx
@@ -190,16 +203,14 @@ export default function Dashboard() {
     value: categoryMap[key],
   }));
 
-  // Ambil HANYA 4 dompet dengan saldo terbesar
   const sortedWallets = [...wallets]
     .sort((a, b) => (parseFloat(b.balance) || 0) - (parseFloat(a.balance) || 0))
     .slice(0, 4);
 
-  // SKELETON LOADER STATE
-  if (loading) {
+  // SKELETON LOADER STATE (hanya tampil jika tidak ada cache sama sekali saat first load)
+  if (loading && wallets.length === 0) {
     return (
       <div className="space-y-4 sm:space-y-6 animate-pulse">
-        {/* Header & 4 Ringkasan Cards Skeleton */}
         <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 sm:gap-6">
           <div className="space-y-2 shrink-0 w-48">
             <div className="h-6 bg-gray-200 dark:bg-slate-800 rounded-lg w-3/4"></div>
@@ -221,7 +232,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Saldo Rekening 4 Dompet Skeleton */}
         <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
           <div className="flex justify-between items-center">
             <div className="h-5 bg-gray-200 dark:bg-slate-800 rounded-lg w-40"></div>
@@ -240,7 +250,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Grafik Arus Kas & Pengeluaran Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
             <div className="h-5 bg-gray-200 dark:bg-slate-800 rounded-lg w-52"></div>
@@ -251,31 +260,6 @@ export default function Dashboard() {
             <div className="flex-1 min-h-[220px] bg-gray-50 dark:bg-slate-800/40 rounded-xl flex items-center justify-center">
               <div className="w-28 h-28 rounded-full border-8 border-gray-200 dark:border-slate-700"></div>
             </div>
-          </div>
-        </div>
-
-        {/* Transaksi Terakhir Skeleton */}
-        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
-          <div className="flex justify-between items-center">
-            <div className="h-5 bg-gray-200 dark:bg-slate-800 rounded-lg w-36"></div>
-            <div className="h-4 bg-gray-200 dark:bg-slate-800 rounded-lg w-20"></div>
-          </div>
-          <div className="space-y-2">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-800 rounded-xl gap-3"
-              >
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="w-9 h-9 rounded-xl bg-gray-200 dark:bg-slate-700 shrink-0"></div>
-                  <div className="space-y-1.5 flex-1">
-                    <div className="h-3.5 bg-gray-200 dark:bg-slate-700 rounded w-1/3"></div>
-                    <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-1/4"></div>
-                  </div>
-                </div>
-                <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-20"></div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
@@ -313,7 +297,6 @@ export default function Dashboard() {
 
         {/* 4 Kartu Ringkasan */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full xl:w-auto flex-1">
-          {/* Total Saldo */}
           <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2 min-w-0">
             <div className="min-w-0">
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
@@ -328,7 +311,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Pemasukan */}
           <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2 min-w-0">
             <div className="min-w-0">
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
@@ -343,7 +325,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Pengeluaran */}
           <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2 min-w-0">
             <div className="min-w-0">
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
@@ -358,7 +339,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Saving Rate */}
           <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2 min-w-0">
             <div className="min-w-0">
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
@@ -417,7 +397,6 @@ export default function Dashboard() {
 
       {/* GRAFIK ARUS KAS & PENGELUARAN */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Tren Arus Kas */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
           <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
             <BarChart3 size={18} className="text-blue-600 dark:text-blue-400 shrink-0" />
@@ -447,7 +426,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Pengeluaran Bulan Ini Per Kategori */}
         <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4 flex flex-col">
           <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
             <PieIcon size={18} className="text-rose-500 shrink-0" />

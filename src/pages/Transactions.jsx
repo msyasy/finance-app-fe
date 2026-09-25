@@ -11,8 +11,8 @@ import {
 } from "lucide-react";
 import API from "../services/api";
 import toast from "react-hot-toast";
+import { getCached, setCached } from "../services/dataCache";
 
-// Helper parsing tanggal yang aman dari format PostgreSQL (potong mikrodetik)
 function parseDateSafe(rawDate) {
   if (!rawDate) return null;
   let str = String(rawDate).trim();
@@ -46,26 +46,28 @@ function formatTxDate(rawDate) {
 }
 
 export default function Transactions() {
-  const [transactions, setTransactions] = useState([]);
-  const [wallets, setWallets] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const cachedTx = getCached("transactions");
+  const cachedWallets = getCached("wallets");
+  const cachedCategories = getCached("categories");
 
-  // Client-Side Pagination State
+  const [transactions, setTransactions] = useState(cachedTx || []);
+  const [wallets, setWallets] = useState(cachedWallets || []);
+  const [categories, setCategories] = useState(cachedCategories || []);
+  const [loading, setLoading] = useState(!cachedTx);
+
   const [page, setPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Filter State
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedWalletFilter, setSelectedWalletFilter] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("");
 
-  // Modal State
   const [deleteTargetId, setDeleteTargetId] = useState(null);
 
-  // Load Seluruh Data (Limit Besar untuk Client-Side Filter)
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (isBackground = false) => {
+    if (!isBackground && !cachedTx) {
+      setLoading(true);
+    }
     try {
       const [txRes, walletRes, catRes] = await Promise.all([
         API.get("/transactions?page=1&limit=1000").catch(() => null),
@@ -74,13 +76,19 @@ export default function Transactions() {
       ]);
 
       if (txRes?.data) {
-        setTransactions(txRes.data.data || txRes.data.transactions || []);
+        const tData = txRes.data.data || txRes.data.transactions || [];
+        setTransactions(tData);
+        setCached("transactions", tData);
       }
       if (walletRes?.data) {
-        setWallets(walletRes.data.data || walletRes.data.wallets || []);
+        const wData = walletRes.data.data || walletRes.data.wallets || [];
+        setWallets(wData);
+        setCached("wallets", wData);
       }
       if (catRes?.data) {
-        setCategories(catRes.data.data || catRes.data.categories || []);
+        const cData = catRes.data.data || catRes.data.categories || [];
+        setCategories(cData);
+        setCached("categories", cData);
       }
     } catch (err) {
       console.error("Gagal memuat data transaksi", err);
@@ -90,11 +98,10 @@ export default function Transactions() {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(!!cachedTx);
 
-    // Listen event global dari Floating Button saat transaksi baru ditambahkan
     const handleTxUpdate = () => {
-      fetchData();
+      fetchData(true);
     };
     window.addEventListener("transactionUpdated", handleTxUpdate);
     return () => {
@@ -102,27 +109,23 @@ export default function Transactions() {
     };
   }, []);
 
-  // Handle Reset Halaman ke-1 Saat Filter Berubah
   useEffect(() => {
     setPage(1);
   }, [searchQuery, selectedWalletFilter, selectedCategoryFilter]);
 
-  // Handle Hapus Transaksi
   const confirmDelete = async () => {
     if (!deleteTargetId) return;
     try {
       await API.delete(`/transactions/${deleteTargetId}`);
       toast.success("Transaksi berhasil dihapus");
       setDeleteTargetId(null);
-      fetchData();
-      // Dispatch global event agar dompet/dashboard juga terupdate
+      fetchData(true);
       window.dispatchEvent(new Event("transactionUpdated"));
     } catch (err) {
       toast.error(err.response?.data?.message || "Gagal menghapus transaksi");
     }
   };
 
-  // 1. Filter Seluruh Transaksi berdasarkan Kriteria
   const filteredTransactions = transactions.filter((tx) => {
     const catObj = categories.find(
       (c) => String(c.id) === String(tx.category_id),
@@ -141,7 +144,6 @@ export default function Transactions() {
     return matchQuery && matchWallet && matchCategory;
   });
 
-  // 2. Client-side Pagination dari Data Terfilter
   const totalItems = filteredTransactions.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
   const paginatedTransactions = filteredTransactions.slice(
@@ -158,8 +160,7 @@ export default function Transactions() {
           Riwayat Transaksi
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Pantau seluruh mutasi keuangan dan histori transaksi kamu secara
-          rinci.
+          Pantau seluruh mutasi keuangan dan histori transaksi kamu secara rinci.
         </p>
       </div>
 
@@ -170,7 +171,6 @@ export default function Transactions() {
             Daftar Transaksi ({totalItems})
           </h3>
 
-          {/* Toolbar Filter & Pencarian */}
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <div className="relative flex-1 md:w-48">
               <Search
@@ -216,9 +216,23 @@ export default function Transactions() {
 
         {/* List Transaksi */}
         <div className="space-y-2">
-          {loading ? (
-            <div className="py-12 text-center text-xs text-gray-400">
-              Memuat riwayat transaksi...
+          {loading && transactions.length === 0 ? (
+            <div className="space-y-2 animate-pulse">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-800 rounded-xl gap-3"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-9 h-9 rounded-xl bg-gray-200 dark:bg-slate-700 shrink-0"></div>
+                    <div className="space-y-1.5 flex-1">
+                      <div className="h-3.5 bg-gray-200 dark:bg-slate-700 rounded w-1/3"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-1/4"></div>
+                    </div>
+                  </div>
+                  <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-20"></div>
+                </div>
+              ))}
             </div>
           ) : paginatedTransactions.length === 0 ? (
             <p className="text-xs text-gray-400 py-10 text-center">
