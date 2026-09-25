@@ -195,13 +195,89 @@ export default function Dashboard() {
     .sort((a, b) => (parseFloat(b.balance) || 0) - (parseFloat(a.balance) || 0))
     .slice(0, 4);
 
+  // SKELETON LOADER STATE
   if (loading) {
     return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-3">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-xs font-semibold text-gray-400">
-          Memuat data keuangan...
-        </p>
+      <div className="space-y-4 sm:space-y-6 animate-pulse">
+        {/* Header & 4 Ringkasan Cards Skeleton */}
+        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 sm:gap-6">
+          <div className="space-y-2 shrink-0 w-48">
+            <div className="h-6 bg-gray-200 dark:bg-slate-800 rounded-lg w-3/4"></div>
+            <div className="h-3.5 bg-gray-200 dark:bg-slate-800 rounded-lg w-full"></div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full xl:w-auto flex-1">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-2"
+              >
+                <div className="space-y-2 flex-1">
+                  <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-1/2"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-3/4"></div>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-slate-700 shrink-0"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Saldo Rekening 4 Dompet Skeleton */}
+        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="h-5 bg-gray-200 dark:bg-slate-800 rounded-lg w-40"></div>
+            <div className="h-4 bg-gray-200 dark:bg-slate-800 rounded-lg w-24"></div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="p-3.5 bg-gray-50 dark:bg-slate-800/40 rounded-xl border border-gray-100 dark:border-slate-800 space-y-2"
+              >
+                <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-1/3"></div>
+                <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-2/3"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Grafik Arus Kas & Pengeluaran Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
+            <div className="h-5 bg-gray-200 dark:bg-slate-800 rounded-lg w-52"></div>
+            <div className="h-64 bg-gray-50 dark:bg-slate-800/40 rounded-xl"></div>
+          </div>
+          <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4 flex flex-col">
+            <div className="h-5 bg-gray-200 dark:bg-slate-800 rounded-lg w-44"></div>
+            <div className="flex-1 min-h-[220px] bg-gray-50 dark:bg-slate-800/40 rounded-xl flex items-center justify-center">
+              <div className="w-28 h-28 rounded-full border-8 border-gray-200 dark:border-slate-700"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Transaksi Terakhir Skeleton */}
+        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="h-5 bg-gray-200 dark:bg-slate-800 rounded-lg w-36"></div>
+            <div className="h-4 bg-gray-200 dark:bg-slate-800 rounded-lg w-20"></div>
+          </div>
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-800 rounded-xl gap-3"
+              >
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="w-9 h-9 rounded-xl bg-gray-200 dark:bg-slate-700 shrink-0"></div>
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-3.5 bg-gray-200 dark:bg-slate-700 rounded w-1/3"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-1/4"></div>
+                  </div>
+                </div>
+                <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-20"></div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
