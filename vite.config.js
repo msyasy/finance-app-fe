@@ -1,61 +1,61 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icons.svg'],
+      registerType: "autoUpdate",
+      includeAssets: ["favicon.svg", "apple-touch-icon.png", "icons.svg"],
       devOptions: {
-        enabled: true // Mengaktifkan PWA di lokal
+        enabled: true, // Mengaktifkan PWA di lokal
       },
       manifest: {
-        name: 'Lapkeu - Laporan Keuangan',
-        short_name: 'LapKeu',
-        lang: 'id',
-        description: 'Aplikasi Pengelola Keuangan',
-        theme_color: '#0f172a',
-        background_color: '#ffffff',
-        display: 'standalone',
-        orientation: 'portrait',
-        scope: '/',
-        start_url: '/',
+        name: "Lapkeu - Laporan Keuangan",
+        short_name: "LapKeu",
+        lang: "id",
+        description: "Aplikasi Pengelola Keuangan",
+        theme_color: "#0f172a",
+        background_color: "#ffffff",
+        display: "standalone",
+        orientation: "portrait",
+        scope: "/",
+        start_url: "/",
         icons: [
           {
-            src: '/pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
+            src: "/pwa-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
           },
           {
-            src: '/pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
+            src: "/pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
           },
           {
-            src: '/pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ]
-      }
-    })
+            src: "/pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any maskable",
+          },
+        ],
+      },
+    }),
   ],
   build: {
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('recharts')) return 'vendor-recharts';
-            if (id.includes('lucide-react')) return 'vendor-icons';
-            if (id.includes('html2canvas')) return 'vendor-html2canvas';
-            return 'vendor';
+          if (id.includes("node_modules")) {
+            if (id.includes("recharts")) return "vendor-recharts";
+            if (id.includes("lucide-react")) return "vendor-icons";
+            if (id.includes("html2canvas")) return "vendor-html2canvas";
+            return "vendor";
           }
-        }
-      }
-    }
-  }
-})
+        },
+      },
+    },
+  },
+});
