@@ -47,11 +47,13 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          recharts: ['recharts'],
-          icons: ['lucide-react'],
-          html2canvas: ['html2canvas']
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('recharts')) return 'vendor-recharts';
+            if (id.includes('lucide-react')) return 'vendor-icons';
+            if (id.includes('html2canvas')) return 'vendor-html2canvas';
+            return 'vendor';
+          }
         }
       }
     }
