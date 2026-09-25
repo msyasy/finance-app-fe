@@ -43,5 +43,17 @@ export default defineConfig({
         ]
       }
     })
-  ]
+  ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          recharts: ['recharts'],
+          icons: ['lucide-react'],
+          html2canvas: ['html2canvas']
+        }
+      }
+    }
+  }
 })
