@@ -80,7 +80,7 @@ export default function Dashboard() {
   const [categories, setCategories] = useState(cachedCategories || []);
   const [transactions, setTransactions] = useState(cachedTx || []);
   const [cashFlowData, setCashFlowData] = useState(cachedCF || []);
-  
+
   // Jika sudah ada cache, loading = false secara instan (0ms delay!)
   const [loading, setLoading] = useState(!cachedWallets && !cachedTx);
   const [regBioLoading, setRegBioLoading] = useState(false);
@@ -89,10 +89,14 @@ export default function Dashboard() {
     setRegBioLoading(true);
     try {
       const res = await registerBiometrics();
-      toast.success(res?.message || "Biometrik (Passkey) berhasil didaftarkan!");
+      toast.success(
+        res?.message || "Biometrik (Passkey) berhasil didaftarkan!",
+      );
     } catch (err) {
       toast.error(
-        err.response?.data?.error || err.message || "Gagal mendaftarkan biometrik",
+        err.response?.data?.error ||
+          err.message ||
+          "Gagal mendaftarkan biometrik",
       );
     } finally {
       setRegBioLoading(false);
@@ -359,7 +363,10 @@ export default function Dashboard() {
       <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            <Wallet size={18} className="text-blue-600 dark:text-blue-400 shrink-0" />
+            <Wallet
+              size={18}
+              className="text-blue-600 dark:text-blue-400 shrink-0"
+            />
             Saldo Rekening & Dompet
           </h3>
           <Link
@@ -399,7 +406,10 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
           <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            <BarChart3 size={18} className="text-blue-600 dark:text-blue-400 shrink-0" />
+            <BarChart3
+              size={18}
+              className="text-blue-600 dark:text-blue-400 shrink-0"
+            />
             Tren Arus Kas (6 Bulan Terakhir)
           </h3>
 
@@ -418,9 +428,21 @@ export default function Dashboard() {
                     fontSize: "12px",
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
-                <Bar dataKey="income" name="Pemasukan" fill="#10B981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expense" name="Pengeluaran" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                <Legend
+                  wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }}
+                />
+                <Bar
+                  dataKey="income"
+                  name="Pemasukan"
+                  fill="#10B981"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar
+                  dataKey="expense"
+                  name="Pengeluaran"
+                  fill="#EF4444"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

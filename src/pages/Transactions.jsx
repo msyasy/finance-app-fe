@@ -160,7 +160,8 @@ export default function Transactions() {
           Riwayat Transaksi
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Pantau seluruh mutasi keuangan dan histori transaksi kamu secara rinci.
+          Pantau seluruh mutasi keuangan dan histori transaksi kamu secara
+          rinci.
         </p>
       </div>
 
