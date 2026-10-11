@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Fingerprint } from "lucide-react";
+import { ArrowLeft, Fingerprint } from "lucide-react";
 import API from "../services/api";
 import { loginWithBiometrics, isWebAuthnSupported } from "../services/webauthn";
 import { startLowkitSSO } from "../services/sso";
@@ -94,6 +94,14 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950 p-4 transition-colors duration-300">
       <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 w-full max-w-md space-y-6">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+        >
+          <ArrowLeft size={14} />
+          Kembali ke beranda
+        </Link>
+
         <div className="text-center space-y-1">
           <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-wide">
             Revenue & Expense<span className="text-blue-600">.Overview</span>

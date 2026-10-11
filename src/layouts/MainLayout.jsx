@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Menu, X } from "lucide-react";
@@ -17,7 +17,7 @@ export default function MainLayout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     toast.success("Berhasil keluar dari akun");
-    navigate("/login");
+    navigate("/", { replace: true });
   };
 
   return (
