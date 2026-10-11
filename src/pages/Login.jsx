@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Fingerprint } from "lucide-react";
 import API from "../services/api";
 import { loginWithBiometrics, isWebAuthnSupported } from "../services/webauthn";
+import { startLowkitSSO } from "../services/sso";
 import toast from "react-hot-toast";
 
 export default function Login() {
@@ -11,6 +12,13 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [bioLoading, setBioLoading] = useState(false);
+
+  // Link dari navbar lowkit: https://lapkeu.msyasy.xyz/login?sso=lowkit
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("sso") === "lowkit") {
+      startLowkitSSO();
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -165,6 +173,17 @@ export default function Login() {
             </button>
           </div>
         )}
+
+        <div>
+          <button
+            type="button"
+            onClick={startLowkitSSO}
+            disabled={loading || bioLoading}
+            className="w-full bg-gray-50 hover:bg-gray-100 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-slate-700 font-semibold p-2.5 rounded-xl transition duration-200 text-xs cursor-pointer disabled:opacity-50"
+          >
+            Masuk dengan LowonganKita
+          </button>
+        </div>
 
         <p className="text-center text-xs text-gray-500 dark:text-gray-400">
           Belum punya akun?{" "}

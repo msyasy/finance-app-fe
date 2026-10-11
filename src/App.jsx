@@ -20,6 +20,7 @@ const Categories = lazy(() => import("./pages/Categories"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Maintenance = lazy(() => import("./pages/Maintenance"));
 const Landing = lazy(() => import("./pages/Landing"));
+const SSOCallback = lazy(() => import("./pages/SSOCallback"));
 
 // Fast Skeleton Page Fallback
 function PageSkeleton() {
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/sso/callback" element={<SSOCallback />} />
 
           {/* Protected Routes (Harus Login) */}
           <Route element={<ProtectedRoute />}>
