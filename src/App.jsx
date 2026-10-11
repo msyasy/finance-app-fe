@@ -19,6 +19,7 @@ const CashFlow = lazy(() => import("./pages/CashFlow"));
 const Categories = lazy(() => import("./pages/Categories"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Maintenance = lazy(() => import("./pages/Maintenance"));
+const Landing = lazy(() => import("./pages/Landing"));
 
 // Fast Skeleton Page Fallback
 function PageSkeleton() {
@@ -52,6 +53,7 @@ export default function App() {
       <Suspense fallback={<PageSkeleton />}>
         <Routes>
           {/* Public Routes */}
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

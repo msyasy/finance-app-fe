@@ -45,13 +45,29 @@ export default defineConfig({
     }),
   ],
   build: {
+    chunkSizeWarningLimit: 1000, // Mengubah batas warning menjadi 1000 kB
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes("node_modules")) {
+            // Pustaka grafik & ekspor
             if (id.includes("recharts")) return "vendor-recharts";
-            if (id.includes("lucide-react")) return "vendor-icons";
             if (id.includes("html2canvas")) return "vendor-html2canvas";
+            
+            // Pustaka ikon
+            if (id.includes("lucide-react")) return "vendor-icons";
+
+            // Core React & Router
+            if (
+              id.includes("/react/") ||
+              id.includes("/react-dom/") ||
+              id.includes("/react-router/") ||
+              id.includes("/react-router-dom/")
+            ) {
+              return "vendor-react";
+            }
+
+            // Sisanya dijadikan chunk vendor umum
             return "vendor";
           }
         },
