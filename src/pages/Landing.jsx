@@ -171,7 +171,7 @@ const FOOTER_COLUMNS = [
   },
   {
     title: "Lainnya",
-    links: [{ label: "LowonganKita", href: "https://lowkit.my.id" }],
+    links: [{ label: "LowonganKita", href: "https://lowongankita.com" }],
   },
 ];
 

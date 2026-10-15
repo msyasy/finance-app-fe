@@ -6,7 +6,7 @@
 
 import API from "./api";
 
-const LOWKIT_URL = import.meta.env.VITE_LOWKIT_URL || "https://lowkit.my.id";
+const LOWKIT_URL = import.meta.env.VITE_LOWKIT_URL || "https://lowongankita.com";
 
 function randomState() {
   const bytes = new Uint8Array(16);
